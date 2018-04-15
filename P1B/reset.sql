@@ -1,4 +1,3 @@
-
 truncate Movie;
 
 truncate Actor;
