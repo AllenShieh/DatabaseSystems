@@ -17,7 +17,7 @@ $query = $_POST["query"];
 echo $query.'<br>';
 
 $mysqli = new mysqli("localhost", "cs143", "", "CS143");
-$result = $mysqli->query("SELECT * FROM Movie WHERE id=100");
+$result = $mysqli->query($query);
 while($row = $result->fetch_row())
 {
   //print_r($row);
@@ -25,6 +25,7 @@ while($row = $result->fetch_row())
   {
     echo $val.' ';
   }
+  echo '<br>';
 }
 //$row = $result->fetch_assoc();
 //echo htmlentities($row);
