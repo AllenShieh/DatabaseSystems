@@ -136,6 +136,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 
 	#echo $sql;
 	$mysqli->query($sql);
+	echo 'Successfully add the information!';
 		
 
 	
