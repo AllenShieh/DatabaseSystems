@@ -55,7 +55,7 @@
     ?>
 	</select>
 	<br>
-	Role(no more than 50 characters): <br> <textarea name="role" rows="1" cols="70"><?php echo $_POST["role"];?></textarea>
+	Role(no more than 50 characters): <br> <textarea name="role" rows="1" cols="70" style='width:710px; FONT-SIZE:20PT;'><?php echo $_POST["role"];?></textarea>
 	<br>
 	<input type="submit" name="submit" value="Submit" style='FONT-SIZE:20PT;'>
 

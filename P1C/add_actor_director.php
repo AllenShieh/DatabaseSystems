@@ -10,9 +10,9 @@
 		<?php if (isset($AorD) && $AorD=="Director") echo "checked";?>
 	value="Director">Director
 	<br>
-	First Name: <br> <textarea name="first_name" rows="1" cols="70"><?php echo $_POST["first_name"];?></textarea>
+	First Name: <br> <textarea name="first_name" rows="1" cols="70" style='width:200px; FONT-SIZE:15PT;' ><?php echo $_POST["first_name"];?></textarea>
 	<br>
-	Last Name: <br> <textarea name="last_name" rows="1" cols="70"><?php echo $_POST["last_name"];?></textarea>
+	Last Name: <br> <textarea name="last_name" rows="1" cols="70" style='width:200px; FONT-SIZE:15PT;' ><?php echo $_POST["last_name"];?></textarea>
    	<br>
    	<input type="radio" name="gender"
 		<?php if (isset($gender) && $gender=="female") echo "checked";?>
@@ -23,33 +23,32 @@
 	<br>
 
 	Date of Birth : <br> 
-		<select name="DobYYYY" onchange="YYYYDD(this.value)" STYLE="FONT-SIZE:30PT">  
+		<select name="DobYYYY" onchange="YYYYDD(this.value)" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Year</option>  
   		</select>  
-  		<select name="DobMM" onchange="MMDD(this.value)">  
+  		<select name="DobMM" onchange="MMDD(this.value)" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Month</option>  
   		</select>  
-  		<select name="DobDD">  
+  		<select name="DobDD" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Day</option>  
   		</select> 
 
 	<br>
 
 	Date of Die (leave blank if alive now): <br> 
-		<select name="DodYYYY" onchange="YYYYDD_dod(this.value)">  
+		<select name="DodYYYY" onchange="YYYYDD_dod(this.value)" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Year</option>  
   		</select>  
-  		<select name="DodMM" onchange="MMDD_dod(this.value)">  
+  		<select name="DodMM" onchange="MMDD_dod(this.value)" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Month</option>  
   		</select>  
-  		<select name="DodDD">  
+  		<select name="DodDD" style='width:67px; FONT-SIZE:15PT;'>  
     		<option value="">Day</option>  
   		</select> 
   	<br> 
-   	<input type="submit" name="submit" value="Submit"> 
+   	<input type="submit" name="submit" value="Submit" style='width:100px; FONT-SIZE:15PT;'> 
 </form>
 
-<h2>Results: </h2>
 
 <?php
 //initialization

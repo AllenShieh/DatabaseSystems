@@ -7,13 +7,13 @@
 
 
 <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>"> 
-   Title: <br> <textarea name="title" rows="1" cols="100" STYLE="FONT-SIZE:20PT"><?php echo $_POST["title"];?></textarea> 
+   Title: <br> <textarea name="title" rows="1" cols="100" style='width:710px; FONT-SIZE:20PT;'><?php echo $_POST["title"];?></textarea> 
    <br>
-   Company: <br> <textarea name="company" rows="1" cols="100" STYLE="FONT-SIZE:20PT"><?php echo $_POST["company"];?></textarea>
+   Company: <br> <textarea name="company" rows="1" cols="100" style='width:710px; FONT-SIZE:20PT;'><?php echo $_POST["company"];?></textarea>
    <br>
    Year:
    <br>
-   <select name="year"  style="width:710px; FONT-SIZE:20PT;" >  
+   <select name="year"  style="width:200px; FONT-SIZE:20PT;" >  
     	<option value="">Year</option>  
     
     <?php
@@ -28,7 +28,7 @@
    <br>
    MPAA Rating:
    <br> 
-   <select name="rating" style='width:710px; FONT-SIZE:20PT;' >
+   <select name="rating" style='width:200px; FONT-SIZE:20PT;' >
    		<option value="G">G</option>
    		<option value="NC-17">NC-17</option>
    		<option value="PG">PG-13</option>
