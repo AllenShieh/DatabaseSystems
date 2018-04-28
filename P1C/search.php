@@ -1,3 +1,7 @@
+<!--
+Need to work on how to process the search
+
+-->
 <!doctype html>
 <html lang="en">
   <head>
@@ -115,7 +119,7 @@
         	{
             echo "Your input is: ".$_POST["searchinput"]."<br>Let's see what we get!<br>";
         ?>
-        <table border="1">
+        <table class="table table-dark">
         <?php
         		$c = 1;
         		while($row = $result->fetch_assoc()){
