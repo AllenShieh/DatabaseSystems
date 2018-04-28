@@ -2,11 +2,11 @@
 <html>
 <body>
 
-<h2>Project 1 B</h2>
+<h2>Project 1C</h2>
 <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">  
    Input your query here: <br> <textarea name="input" rows="5" cols="40"><?php echo $_POST["input"];?></textarea>
    <br>
-   <input type="submit" name="submit" value="Submit"> 
+   <input type="submit" name="submit" value="Submit">
 </form>
 <h2>Results: </h2>
 
@@ -57,24 +57,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST"){
 		    	}
 		    	echo '</tr>';
 		    	//echo  "<br />";
-		    	
+
 		    }
 		    echo '<tr>';
 		    foreach($row as $x=>$x_value) {
-	  			//echo $x; 
-	  			
+	  			//echo $x;
+
 	  			echo '<td>'.$x_value.'</td>';
 	  			//echo ' ';
 			}
 			//echo  "<br />";
 			echo '</tr>';
-			
+
 		}
 ?>
 </table>
 <?php
 	}
-	
+
 	//echo $result;
 	$mysqli->close();
 

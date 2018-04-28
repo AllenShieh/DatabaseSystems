@@ -12,59 +12,55 @@
 
 
 <h2>Add relation between Movies and Actors</h2>
-<form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>"> 
-	Movie Title:
-	<br>
+<form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
+
+	<!-- Movie title -->
+	Movie Title:<br>
 	<select name = 'title'  style='width:710px; FONT-SIZE:20PT;'>
 		<option value=''></option>
 	<?php
-		
-		$sql_movie = 'select id, title, year from Movie';
-		$result_movie = $mysqli->query($sql_movie);
+	$sql_movie = 'select id, title, year from Movie';
+	$result_movie = $mysqli->query($sql_movie);
 
-		while($row = $result_movie->fetch_assoc())
-		{
-			echo '<option>';
-			echo $row['title'] . '(' . $row['year'] . ')';
-			echo '</option>';
+	while($row = $result_movie->fetch_assoc())
+	{
+		echo '<option>';
+		echo $row['title'] . '(' . $row['year'] . ')';
+		echo '</option>';
 
-		}
-
-    ?>
+	}
+	?>
 	</select>
-
 	<br>
 
-	Actor:
-	<br>
+	<!-- Actor -->
+	Actor:<br>
 	<select name = 'actor'  style='width:710px; FONT-SIZE:20PT;'>
 		<option value=''></option>
 	<?php
-		
-		$sql_director = 'select last_name, first_name, dob from Actor';
-		$result_director = $mysqli->query($sql_director);
+	$sql_director = 'select last_name, first_name, dob from Actor';
+	$result_director = $mysqli->query($sql_director);
 
-		while($row = $result_director->fetch_assoc())
-		{
-			echo '<option>';
-			echo $row['first_name'] . ' '. $row['last_name'] . '(' . $row['dob'] . ')';
-			echo '</option>';
-
-		}
-
-    ?>
+	while($row = $result_director->fetch_assoc())
+	{
+		echo '<option>';
+		echo $row['first_name'] . ' '. $row['last_name'] . '(' . $row['dob'] . ')';
+		echo '</option>';
+	}
+  ?>
 	</select>
 	<br>
-	Role(no more than 50 characters): <br> <textarea name="role" rows="1" cols="70" style='width:710px; FONT-SIZE:20PT;'><?php echo $_POST["role"];?></textarea>
-	<br>
-	<input type="submit" name="submit" value="Submit" style='FONT-SIZE:20PT;'>
 
+	<!-- Role -->
+	Role(no more than 50 characters):<br><textarea name="role" rows="1" cols="70" style='width:710px; FONT-SIZE:20PT;'><?php echo $_POST["role"];?></textarea>
+	<br>
+
+	<input type="submit" name="submit" value="Submit" style='FONT-SIZE:20PT;'>
 </form>
 
 <?php
-
 if ($_SERVER["REQUEST_METHOD"] == "POST")
-{	
+{
 	if($_POST['title'] == null or $_POST['actor'] == null or $_POST['role'] == null)
 	{
 		if($_POST['title'] == null)
@@ -80,7 +76,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 		{
 			echo 'Error: You must specify the role of the actor!';
 		}
-
 	}
 	else
 	{
@@ -90,7 +85,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 		{
 			echo 'Please enter the role within 20 characters!';
 		}
-		else 
+		else
 		{
 			$role = '"' . $role . '"';
 			$movie = explode('(' , $_POST['title'])[0];
@@ -100,23 +95,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 
 
 			$sql_mid = 'select id from Movie where title = "' .$movie . '"';
-			$mid = $mysqli->query($sql_mid)->fetch_assoc()['id']; 
-			//echo $mid; 
+			$mid = $mysqli->query($sql_mid)->fetch_assoc()['id'];
+			//echo $mid;
 			$sql_aid = 'select id from Actor where first_name = "' .$first_name . '" and last_name = "'. $last_name . '"';
-			$aid = $mysqli->query($sql_aid)->fetch_assoc()['id']; 
+			$aid = $mysqli->query($sql_aid)->fetch_assoc()['id'];
 
 			$sql = 'insert into MovieActor (mid, aid, role) values (' . $mid . ',' . $aid . ',' . $role .')';
 			$mysqli->query($sql);
 			echo 'Successfully add the relation between movies and directors!';
 		}
-		
+
 	}
 
-	
-	
-
 }
-
 ?>
 
 </body>

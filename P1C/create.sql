@@ -13,8 +13,8 @@ create table Movie(
 	id					INT,
 	title				varchar(100) NOT NULL,
 	year				INT,
-	rating				varchar(10),
-	company				varchar(50),
+	rating			varchar(10),
+	company			varchar(50),
 
 	primary key(id), -- primary key constraints
 	check (year >= 1800) -- CHECK constrains
@@ -23,8 +23,8 @@ create table Movie(
 
 create table Actor(
 	id					INT,
-	last_name			varchar(20),
-	first_name			varchar(20),
+	last_name		varchar(20),
+	first_name	varchar(20),
 	sex					varchar(6),
 	dob					date,
 	dod					date,
@@ -36,8 +36,8 @@ create table Actor(
 
 create table Director(
 	id					INT,
-	last_name			varchar(20),
-	first_name			varchar(20),
+	last_name		varchar(20),
+	first_name	varchar(20),
 	dob					date,
 	dod					date,
 
@@ -47,7 +47,7 @@ create table Director(
 
 create table MovieGenre(
 	mid					INT,
-	genre 				varchar(20),
+	genre 			varchar(20),
 
 	Foreign key(mid) references Movie(id) -- referential integrity constraints
 
@@ -77,8 +77,8 @@ create table Review(
 	name 				varchar(20),
 	time				timestamp,
 	mid 				INT,
-	rating				INT,
-	comment				varchar(500),
+	rating			INT,
+	comment			varchar(500),
 
 	Foreign key(mid) references Movie(id), -- referential integrity constraints
 	check (rating>=0 and rating<=5) -- CHECK constraints
@@ -91,6 +91,3 @@ create table MaxPersonID(
 create table MaxMovieID(
 	id 					INT
 )ENGINE = INNODB;
-
-
-
