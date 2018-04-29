@@ -91,111 +91,109 @@
             <h1>Movie Information</h1>
             <?php
             $identifier = $_GET['identifier'];
-            //initialization
-            $db_host = 'localhost';
-            $db_name = 'CS143';
-            $db_user = 'cs143';
-            $db_pwd = '';
-            $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
 
-            $sql_movie = "select title as Title, year as Year, company as Producer, rating as 'MPAA Rating' from Movie where id=".$identifier.";";
-            $sql_movie_director = "select concat(first_name, ' ', last_name) as Name, dob as 'DoB' from Director join MovieDirector on Director.id=MovieDirector.did where mid=".$identifier.";";
-            $sql_movie_genre = "select genre as Genre from Movie join MovieGenre on Movie.id=MovieGenre.mid where id=".$identifier.";";
+            if($identifier!=NULL){
+              //initialization
+              $db_host = 'localhost';
+              $db_name = 'CS143';
+              $db_user = 'cs143';
+              $db_pwd = '';
+              $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
 
-            $result_movie = $mysqli->query($sql_movie);
-            $result_movie_director = $mysqli->query($sql_movie_director);
-            $result_movie_genre = $mysqli->query($sql_movie_genre);
-            ?>
-            <br>
-            <h3 align="left">Movie's information is:</h3>
-            <table class="table table-sm table-bordered">
-            <?php
+              $sql_movie = "select title as Title, year as Year, company as Producer, rating as 'MPAA Rating' from Movie where id=".$identifier.";";
+              $sql_movie_director = "select concat(first_name, ' ', last_name) as Name, dob as 'DoB' from Director join MovieDirector on Director.id=MovieDirector.did where mid=".$identifier.";";
+              $sql_movie_genre = "select genre as Genre from Movie join MovieGenre on Movie.id=MovieGenre.mid where id=".$identifier.";";
 
-            while($row = $result_movie->fetch_assoc()){
-              foreach($row as $x=>$x_value) {
-                echo "<tr><td style='font-weight:bold'>".$x."</td><td>".$x_value."</td></tr>";
+              $result_movie = $mysqli->query($sql_movie);
+              $result_movie_director = $mysqli->query($sql_movie_director);
+              $result_movie_genre = $mysqli->query($sql_movie_genre);
+
+              echo "<br>";
+              echo "<h3 align='left'>Movie's information is:</h3>";
+              echo "<table class='table table-sm table-bordered'>";
+
+              while($row = $result_movie->fetch_assoc()){
+                foreach($row as $x=>$x_value) {
+                  echo "<tr><td style='font-weight:bold'>".$x."</td><td>".$x_value."</td></tr>";
+                }
               }
-            }
 
-            echo "<tr><td style='font-weight:bold'>Director<td>";
-            while($row = $result_movie_director->fetch_assoc()){
-              $c = 1;
-              foreach($row as $x=>$x_value) {
-                if($c==1){
-                  $c = 2;
+              echo "<tr><td style='font-weight:bold'>Director<td>";
+              while($row = $result_movie_director->fetch_assoc()){
+                $c = 1;
+                foreach($row as $x=>$x_value) {
+                  if($c==1){
+                    $c = 2;
+                    echo $x_value;
+                  }
+                  else{
+                    $c = 1;
+                    echo "(".$x_value.")<br>";
+                  }
+                }
+              }
+              echo "</td></tr>";
+
+              echo "<tr><td style='font-weight:bold'>Genre<td>";
+              $r = 1;
+              while($row = $result_movie_genre->fetch_assoc()){
+                foreach($row as $x=>$x_value) {
+                  if($r>1) echo ", ";
                   echo $x_value;
+                  $r = $r+1;
                 }
-                else{
+              }
+              echo "</td></tr>";
+
+              echo "</table>";
+
+              $sql_actor = "select id, concat(first_name, ' ', last_name) as Name, role as Role from Actor join MovieActor on Actor.id=MovieActor.aid where mid=".$identifier.";";
+
+              $result_actor = $mysqli->query($sql_actor);
+              //echo $sql_actor_role;
+
+              echo "<br>";
+              echo "<h3 align='left'>Actors in this movie:</h3>";
+              echo "<table class='table table-sm table-bordered'>";
+
+              $r = 1;
+              while($row = $result_actor->fetch_assoc()){
+                if($r==1){
+                  $r = 0;
+                  echo '<tr>';
                   $c = 1;
-                  echo "(".$x_value.")<br>";
+                  foreach($row as $x=>$x_value){
+                    if($c==1){
+                      $c = 0;
+                    }
+                    else echo '<td style="font-weight:bold">'.$x.'</td>';
+                  }
+                  echo '</tr>';
                 }
-              }
-            }
-            echo "</td></tr>";
-
-            echo "<tr><td style='font-weight:bold'>Genre<td>";
-            $r = 1;
-            while($row = $result_movie_genre->fetch_assoc()){
-              foreach($row as $x=>$x_value) {
-                if($r>1) echo ", ";
-                echo $x_value;
-                $r = $r+1;
-              }
-            }
-            echo "</td></tr>";
-
-            ?>
-            </table>
-
-            <?php
-            $sql_actor = "select id, concat(first_name, ' ', last_name) as Name, role as Role from Actor join MovieActor on Actor.id=MovieActor.aid where mid=".$identifier.";";
-
-            $result_actor = $mysqli->query($sql_actor);
-            //echo $sql_actor_role;
-            ?>
-            <br>
-            <h3 align="left">Actors in this movie:</h3>
-            <table class="table table-sm table-bordered">
-            <?php
-            $r = 1;
-            while($row = $result_actor->fetch_assoc()){
-              if($r==1){
-                $r = 0;
                 echo '<tr>';
                 $c = 1;
-                foreach($row as $x=>$x_value){
+                $ref = "./show_actor.php?identifier=";
+                foreach($row as $x=>$x_value) {
                   if($c==1){
-                    $c = 0;
+                    $c = 2;
+                    $ref = $ref.$x_value;
                   }
-                  else echo '<td style="font-weight:bold">'.$x.'</td>';
+                  elseif($c==2){
+                    $c = 0;
+                    echo "<td><a href=".$ref.">".$x_value."</a></td>";
+                  }
+                  else{
+                    echo "<td>".$x_value."</td>";
+                  }
                 }
                 echo '</tr>';
               }
-              echo '<tr>';
-              $c = 1;
-              $ref = "./show_actor.php?identifier=";
-              foreach($row as $x=>$x_value) {
-                if($c==1){
-                  $c = 2;
-                  $ref = $ref.$x_value;
-                }
-                elseif($c==2){
-                  $c = 0;
-                  echo "<td><a href=".$ref.">".$x_value."</a></td>";
-                }
-                else{
-                  echo "<td>".$x_value."</td>";
-                }
-              }
-              echo '</tr>';
-            }
-            ?>
-            </table>
 
-            <div align="left">
-              <br>
-              <h3>User Reviews</h3>
-              <?php
+              echo "</table>";
+
+              echo "<div align='left'>";
+              echo "<br>";
+              echo "<h3>User Reviews</h3>";
 
               $sql_average = "select avg(rating) from Review where mid=".$identifier.";";
 
@@ -238,8 +236,9 @@
                 }
               }
 
-              ?>
-            </div>
+              echo "</div>";
+            }
+            ?>
 
 
             <br>

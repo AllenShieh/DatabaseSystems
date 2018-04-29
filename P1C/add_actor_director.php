@@ -59,10 +59,11 @@ Still need to implement the Director part
     <div class="starter-template">
       <div class="row">
         <div class="col"></div>
-        <div class="col-6" align="left">
+        <div class="col-8" align="left">
           <h1>Add new director/actor</h1><br>
 
           <form name="reg_testdate" method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
+
             <!-- Actor/Director checkbox -->
             <input type="radio" name="AorD"
           	  <?php if (isset($AorD) && $AorD=="Actor") echo "checked";?>

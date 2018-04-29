@@ -94,87 +94,86 @@ need to deal with the empty results
             <h1>Actor Information</h1>
             <?php
             $identifier = $_GET['identifier'];
-            //initialization
-            $db_host = 'localhost';
-            $db_name = 'CS143';
-            $db_user = 'cs143';
-            $db_pwd = '';
-            $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
 
-            $sql_actor = "select concat(first_name, ' ', last_name) as Name, sex as Sex, dob as 'Date of Birth', dod as 'Date of Death' from Actor where id=".$identifier.";";
+            if($identifier!=NULL){
+              //initialization
+              $db_host = 'localhost';
+              $db_name = 'CS143';
+              $db_user = 'cs143';
+              $db_pwd = '';
+              $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
 
-            $result = $mysqli->query($sql_actor);
-            ?>
-            <br>
-            <h3 align="left">Actor's information is:</h3>
-            <table class="table table-sm table-bordered">
-            <?php
-            $r = 1;
-            while($row = $result->fetch_assoc()){
-              if($r==1){
-                $r = 0;
-                echo '<tr>';
-                foreach($row as $x=>$x_value){
-                  echo '<td style="font-weight:bold">'.$x.'</td>';
-                }
-                echo '</tr>';
-              }
-              echo '<tr>';
-              foreach($row as $x=>$x_value) {
-                echo "<td>".$x_value."</td>";
-              }
-              echo '</tr>';
-            }
-            ?>
-            </table>
+              $sql_actor = "select concat(first_name, ' ', last_name) as Name, sex as Sex, dob as 'Date of Birth', dod as 'Date of Death' from Actor where id=".$identifier.";";
 
-            <?php
-            $sql_actor_role = "select id, role as Role, title as Title from MovieActor join Movie on MovieActor.mid=Movie.id where MovieActor.aid=".$identifier.";";
+              $result = $mysqli->query($sql_actor);
 
-            $result = $mysqli->query($sql_actor_role);
-            //echo $sql_actor_role;
-            ?>
-            <br>
-            <h3 align="left">Actor's movies and roles:</h3>
-            <table class="table table-sm table-bordered">
-            <?php
+              echo "<br>";
+              echo "<h3 align='left'>Actor's information is:</h3>";
+              echo "<table class='table table-sm table-bordered'>";
 
-            $r = 1;
-            while($row = $result->fetch_assoc()){
-              if($r==1){
-                $r = 0;
-                echo '<tr>';
-                $c = 1;
-                foreach($row as $x=>$x_value){
-                  if($c==1){
-                    $c = 2;
+              $r = 1;
+              while($row = $result->fetch_assoc()){
+                if($r==1){
+                  $r = 0;
+                  echo '<tr>';
+                  foreach($row as $x=>$x_value){
+                    echo '<td style="font-weight:bold">'.$x.'</td>';
                   }
-                  else echo '<td style="font-weight:bold">'.$x.'</td>';
+                  echo '</tr>';
                 }
-                echo '</tr>';
-              }
-              echo '<tr>';
-              $c = 1;
-              $ref = "./show_movie.php?identifier=";
-              foreach($row as $x=>$x_value) {
-                if($c==1){
-                  $c = 2;
-                  $ref = $ref.$x_value;
-                }
-                elseif($c==2){
-                  $c = 3;
+                echo '<tr>';
+                foreach($row as $x=>$x_value) {
                   echo "<td>".$x_value."</td>";
                 }
-                else{
-                  echo "<td><a href=".$ref.">".$x_value."</a></td>";
-                }
+                echo '</tr>';
               }
-              echo '</tr>';
+
+              echo "</table>";
+
+              $sql_actor_role = "select id, role as Role, title as Title from MovieActor join Movie on MovieActor.mid=Movie.id where MovieActor.aid=".$identifier.";";
+
+              $result = $mysqli->query($sql_actor_role);
+              //echo $sql_actor_role;
+              echo "<br>";
+              echo "<h3 align='left'>Actor's movies and roles:</h3>";
+              echo "<table class='table table-sm table-bordered'>";
+
+              $r = 1;
+              while($row = $result->fetch_assoc()){
+                if($r==1){
+                  $r = 0;
+                  echo '<tr>';
+                  $c = 1;
+                  foreach($row as $x=>$x_value){
+                    if($c==1){
+                      $c = 2;
+                    }
+                    else echo '<td style="font-weight:bold">'.$x.'</td>';
+                  }
+                  echo '</tr>';
+                }
+                echo '<tr>';
+                $c = 1;
+                $ref = "./show_movie.php?identifier=";
+                foreach($row as $x=>$x_value) {
+                  if($c==1){
+                    $c = 2;
+                    $ref = $ref.$x_value;
+                  }
+                  elseif($c==2){
+                    $c = 3;
+                    echo "<td>".$x_value."</td>";
+                  }
+                  else{
+                    echo "<td><a href=".$ref.">".$x_value."</a></td>";
+                  }
+                }
+                echo '</tr>';
+              }
+
+              echo "</table>";
             }
-
             ?>
-            </table>
-
 
             <br>
             <h2>Search your favourite actor!</h2>
