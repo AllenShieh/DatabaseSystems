@@ -41,7 +41,7 @@
           -->
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./show_actor.php">Actor</a>
               <a class="dropdown-item" href="./show_movie.php">Movie</a>
@@ -49,7 +49,7 @@
           </li>
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./add_actor_director.php">Actor/Director</a>
               <a class="dropdown-item" href="./add_movie_information.php">Movie information</a>
@@ -84,7 +84,7 @@
     <main role="main" class="container">
 
       <div class="starter-template">
-        <h1>Search your favourite movie!</h1>
+        <h2>Search your favourite movie!</h2>
         <p class="lead">Please tpye in its title.</p>
 
         <form action="./search.php" method="post">

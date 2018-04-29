@@ -1,3 +1,7 @@
+<!--
+need to deal with the empty results
+
+-->
 <!doctype html>
 <html lang="en">
   <head>
@@ -41,7 +45,7 @@
           -->
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./show_actor.php">Actor</a>
               <a class="dropdown-item" href="./show_movie.php">Movie</a>
@@ -49,7 +53,7 @@
           </li>
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./add_actor_director.php">Actor/Director</a>
               <a class="dropdown-item" href="./add_movie_information.php">Movie information</a>
@@ -84,15 +88,91 @@
     <main role="main" class="container">
 
       <div class="starter-template">
-        <h1>Search your favourite actor!</h1>
-        <p class="lead">Please type in his/her name.</p>
+        <div class="row">
+          <div class="col"></div>
+          <div class="col-8">
+            <h1>Actor Information</h1>
+            <?php
+            $identifier = $_GET['identifier'];
+            //initialization
+            $db_host = 'localhost';
+            $db_name = 'CS143';
+            $db_user = 'cs143';
+            $db_pwd = '';
+            $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
 
-        <form action="./search.php" method="post">
-          <div class="form-group">
-            <input class="form-control" name="searchinput" rows="1" placeholder="name of actor"><br>
-            <input class="btn btn-primary" type="submit" value="Search">
+            $sql_actor = "select concat(first_name, ' ', last_name) as Name, sex as Sex, dob as 'Date of Birth', dod as 'Date of Death' from Actor where id=".$identifier.";";
+
+            $result = $mysqli->query($sql_actor);
+            ?>
+            <br>
+            <h3 align="left">Actor's information is:</h3>
+            <table class="table table-bordered">
+            <?php
+            $r = 1;
+            while($row = $result->fetch_assoc()){
+              if($r==1){
+                $r = 0;
+                echo '<tr>';
+                foreach($row as $x=>$x_value){
+                  echo '<td style="font-weight:bold">'.$x.'</td>';
+                }
+                echo '</tr>';
+              }
+              echo '<tr>';
+              foreach($row as $x=>$x_value) {
+                echo "<td>".$x_value."</td>";
+              }
+              echo '</tr>';
+            }
+            ?>
+            </table>
+
+            <?php
+            $sql_actor_role = "select role as Role, title as Title from MovieActor join Movie on MovieActor.mid=Movie.id where MovieActor.aid=".$identifier.";";
+
+            $result = $mysqli->query($sql_actor_role);
+            //echo $sql_actor_role;
+            ?>
+            <br>
+            <h3 align="left">Actor's movies and roles:</h3>
+            <table class="table table-bordered">
+            <?php
+
+            $r = 1;
+            while($row = $result->fetch_assoc()){
+              if($r==1){
+                $r = 0;
+                echo '<tr>';
+                foreach($row as $x=>$x_value){
+                  echo '<td style="font-weight:bold">'.$x.'</td>';
+                }
+                echo '</tr>';
+              }
+              echo '<tr>';
+              foreach($row as $x=>$x_value) {
+                echo "<td>".$x_value."</td>";
+              }
+              echo '</tr>';
+            }
+
+            ?>
+            </table>
+
+
+            <br>
+            <h2>Search your favourite actor!</h2>
+            <p class="lead">Please type in his/her name.</p>
+
+            <form action="./search.php" method="post">
+              <div class="form-group">
+                <input class="form-control" name="searchinput" rows="1" placeholder="name of actor"><br>
+                <input class="btn btn-primary" type="submit" value="Search">
+              </div>
+            </form>
           </div>
-        </form>
+          <div class="col"></div>
+        </div>
 
       </div>
 

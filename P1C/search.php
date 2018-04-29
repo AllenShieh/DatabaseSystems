@@ -45,7 +45,7 @@ Need to work on how to process the search
           -->
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Show...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./show_actor.php">Actor</a>
               <a class="dropdown-item" href="./show_movie.php">Movie</a>
@@ -53,7 +53,7 @@ Need to work on how to process the search
           </li>
 
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="http://example.com" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
+            <a class="nav-link dropdown-toggle" href="" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Add...</a>
             <div class="dropdown-menu" aria-labelledby="dropdown01">
               <a class="dropdown-item" href="./add_actor_director.php">Actor/Director</a>
               <a class="dropdown-item" href="./add_movie_information.php">Movie information</a>
@@ -88,63 +88,142 @@ Need to work on how to process the search
     <main role="main" class="container">
 
       <div class="starter-template">
-        <h1>Search your favourite actor or movie!</h1>
-        <p class="lead">Please input his/her name or the movie's title.</p>
+        <div class="row">
+          <div class="col"></div>
+          <div class="col-8">
+            <h1>Search your favourite actor or movie!</h1>
+            <p class="lead">Please input his/her name or the movie's title.</p>
 
-        <form action="./search.php" method="post">
-          <div class="form-group">
-            <input class="form-control" name="searchinput" rows="1" placeholder="name of actor, title of movie..."><br>
-            <input class="btn btn-primary" type="submit" value="Search">
+            <form action="./search.php" method="post">
+              <div class="form-group">
+                <input class="form-control" name="searchinput" rows="1" placeholder="name of actor, title of movie..."><br>
+                <input class="btn btn-primary" type="submit" value="Search">
+              </div>
+            </form>
+            <br>
+            <?php
+
+            //initialization
+            $db_host = 'localhost';
+            $db_name = 'CS143';
+            $db_user = 'cs143';
+            $db_pwd = '';
+            $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
+
+            #$sql = "select * from Actor";
+
+            if ($_SERVER["REQUEST_METHOD"] == "POST"){
+              $strings = $_POST['searchinput'];
+              $words = explode(" ",$strings);
+              $sql_actor = "select id, concat(first_name, ' ', last_name) as Name, dob as 'Date of Birth' from Actor where ";
+              $sql_movie = "select id, title as Title, year as Year from Movie where ";
+              $comma = 0;
+              foreach ($words as $word) {
+                //echo $word."<br>";
+                if($comma>0){
+                  $sql_actor = $sql_actor." and ";
+                  $sql_movie = $sql_movie." and ";
+                }
+                $sql_actor = $sql_actor."concat(first_name, last_name) like '%".$word."%'";
+                $sql_movie = $sql_movie."title like '%".$word."%'";
+                $comma = $comma+1;
+              }
+              $sql_actor = $sql_actor.";";
+              $sql_movie = $sql_movie.";";
+            	//$sql = $_POST['searchinput'];
+              //echo $sql_actor."<br>";
+              //echo $sql_movie."<br>";
+
+              // Actor Results
+            	$result = $mysqli->query($sql_actor);
+            	if($result === false){
+                ?>
+            	  <h3>Oops! For actors, we got nothing for you.</h3>
+                <?php
+            	}
+            	else
+            	{
+                ?>
+                <h3>Let's see what we get for actors!</h3>
+                <table class="table table-bordered">
+                <?php
+            		$r = 1;
+            		while($row = $result->fetch_assoc()){
+          		    if($r==1){
+          		    	$r = 0;
+          		    	echo '<tr>';
+                    $c = 1;
+          		    	foreach($row as $x=>$x_value){
+                      if($c==1){
+                        $c = 0;
+                      }
+          		    		else echo '<td style="font-weight:bold">'.$x.'</td>';
+          		    	}
+          		    	echo '</tr>';
+          		    }
+          		    echo '<tr>';
+                  $c = 1;
+                  $ref = "./show_actor.php?identifier=";
+          		    foreach($row as $x=>$x_value) {
+                    if($c==1){
+                      $c = 2;
+                      $ref = $ref.$x_value;
+                    }
+          	  			elseif($c==2){
+                      $c = 0;
+                      echo "<td><a href=".$ref.">".$x_value."</a></td>";
+                    }
+                    else{
+                      echo "<td>".$x_value."</td>";
+                    }
+            			}
+            			echo '</tr>';
+            		}
+                ?>
+                </table>
+                <?php
+              }
+
+              // Movie Results
+            	$result = $mysqli->query($sql_movie);
+            	if($result === false){
+                ?>
+            	  <h3>Oops! For movies, we got nothing for you.</h3>
+                <?php
+            	}
+            	else
+            	{
+                ?>
+                <h3>Let's see what we get for movies!</h3>
+                <table class="table table-bordered">
+                <?php
+            		$r = 1;
+            		while($row = $result->fetch_assoc()){
+          		    if($r==1){
+          		    	$r = 0;
+          		    	echo '<tr>';
+          		    	foreach($row as $x=>$x_value){
+          		    		echo '<td style="font-weight:bold">'.$x.'</td>';
+          		    	}
+          		    	echo '</tr>';
+          		    }
+          		    echo '<tr>';
+          		    foreach($row as $x=>$x_value) {
+          	  			echo '<td>'.$x_value.'</td>';
+            			}
+            			echo '</tr>';
+            		}
+                ?>
+                </table>
+                <?php
+            	}
+            	$mysqli->close();
+            	$result->free();
+            }
+            ?>
           </div>
-        </form>
-
-        <?php
-
-        //initialization
-        $db_host = 'localhost';
-        $db_name = 'CS143';
-        $db_user = 'cs143';
-        $db_pwd = '';
-        $mysqli = new mysqli($db_host, $db_user, $db_pwd, $db_name);
-
-        #$sql = "select * from Actor";
-
-        if ($_SERVER["REQUEST_METHOD"] == "POST"){
-        	$sql = $_POST['searchinput'];
-        	$result = $mysqli->query($sql);
-        	if($result === false){
-        	  echo "Your input is: ".$_POST["searchinput"]."<br>Oops! We got nothing for you.";
-        	}
-        	else
-        	{
-            echo "Your input is: ".$_POST["searchinput"]."<br>Let's see what we get!<br>";
-        ?>
-        <table class="table table-dark">
-        <?php
-        		$c = 1;
-        		while($row = $result->fetch_assoc()){
-      		    if($c==1){
-      		    	$c = $c + 1;
-      		    	echo '<tr>';
-      		    	foreach($row as $x=>$x_value){
-      		    		echo '<td style="font-weight:bold">'.$x.'</td>';
-      		    	}
-      		    	echo '</tr>';
-      		    }
-      		    echo '<tr>';
-      		    foreach($row as $x=>$x_value) {
-      	  			echo '<td>'.$x_value.'</td>';
-        			}
-        			echo '</tr>';
-        		}
-        ?>
-        </table>
-        <?php
-        	}
-        	$mysqli->close();
-        	$result->free();
-        }
-        ?>
+          <div class="col"></div>
+        </div>
       </div>
 
     </main><!-- /.container -->
