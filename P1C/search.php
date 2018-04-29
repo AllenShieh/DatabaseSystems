@@ -136,16 +136,18 @@ Need to work on how to process the search
 
               // Actor Results
             	$result = $mysqli->query($sql_actor);
-            	if($result === false){
-                ?>
-            	  <h3>Oops! For actors, we got nothing for you.</h3>
-                <?php
+              //echo $result."<br>";
+            	if($result->num_rows==0){
+
+            	  echo "<h3>Oops! For actors, we got nothing for you.</h3>";
+
             	}
             	else
             	{
+
+                echo "<h3>Let's see what we get for actors!</h3>";
                 ?>
-                <h3>Let's see what we get for actors!</h3>
-                <table class="table table-bordered">
+                <table class="table table-sm table-bordered">
                 <?php
             		$r = 1;
             		while($row = $result->fetch_assoc()){
@@ -186,7 +188,7 @@ Need to work on how to process the search
 
               // Movie Results
             	$result = $mysqli->query($sql_movie);
-            	if($result === false){
+            	if($result->num_rows==0){
                 ?>
             	  <h3>Oops! For movies, we got nothing for you.</h3>
                 <?php
@@ -195,21 +197,35 @@ Need to work on how to process the search
             	{
                 ?>
                 <h3>Let's see what we get for movies!</h3>
-                <table class="table table-bordered">
+                <table class="table table-sm table-bordered">
                 <?php
             		$r = 1;
             		while($row = $result->fetch_assoc()){
           		    if($r==1){
           		    	$r = 0;
           		    	echo '<tr>';
+                    $c = 1;
           		    	foreach($row as $x=>$x_value){
-          		    		echo '<td style="font-weight:bold">'.$x.'</td>';
+                      if($c==1){
+                        $c = 0;
+                      }
+          		    		else echo '<td style="font-weight:bold">'.$x.'</td>';
           		    	}
           		    	echo '</tr>';
           		    }
           		    echo '<tr>';
+                  $c = 1;
+                  $ref = "./show_movie.php?identifier=";
           		    foreach($row as $x=>$x_value) {
-          	  			echo '<td>'.$x_value.'</td>';
+                    if($c==1){
+                      $c = 2;
+                      $ref = $ref.$x_value;
+                    }
+                    elseif($c==2){
+                      $c = 0;
+            	  			echo "<td><a href=".$ref.">".$x_value."</a></td>";
+                    }
+                    else echo "<td>".$x_value."</td>";
             			}
             			echo '</tr>';
             		}

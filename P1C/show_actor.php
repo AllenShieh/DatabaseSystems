@@ -107,7 +107,7 @@ need to deal with the empty results
             ?>
             <br>
             <h3 align="left">Actor's information is:</h3>
-            <table class="table table-bordered">
+            <table class="table table-sm table-bordered">
             <?php
             $r = 1;
             while($row = $result->fetch_assoc()){
@@ -129,14 +129,14 @@ need to deal with the empty results
             </table>
 
             <?php
-            $sql_actor_role = "select role as Role, title as Title from MovieActor join Movie on MovieActor.mid=Movie.id where MovieActor.aid=".$identifier.";";
+            $sql_actor_role = "select id, role as Role, title as Title from MovieActor join Movie on MovieActor.mid=Movie.id where MovieActor.aid=".$identifier.";";
 
             $result = $mysqli->query($sql_actor_role);
             //echo $sql_actor_role;
             ?>
             <br>
             <h3 align="left">Actor's movies and roles:</h3>
-            <table class="table table-bordered">
+            <table class="table table-sm table-bordered">
             <?php
 
             $r = 1;
@@ -144,14 +144,30 @@ need to deal with the empty results
               if($r==1){
                 $r = 0;
                 echo '<tr>';
+                $c = 1;
                 foreach($row as $x=>$x_value){
-                  echo '<td style="font-weight:bold">'.$x.'</td>';
+                  if($c==1){
+                    $c = 2;
+                  }
+                  else echo '<td style="font-weight:bold">'.$x.'</td>';
                 }
                 echo '</tr>';
               }
               echo '<tr>';
+              $c = 1;
+              $ref = "./show_movie.php?identifier=";
               foreach($row as $x=>$x_value) {
-                echo "<td>".$x_value."</td>";
+                if($c==1){
+                  $c = 2;
+                  $ref = $ref.$x_value;
+                }
+                elseif($c==2){
+                  $c = 3;
+                  echo "<td>".$x_value."</td>";
+                }
+                else{
+                  echo "<td><a href=".$ref.">".$x_value."</a></td>";
+                }
               }
               echo '</tr>';
             }

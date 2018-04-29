@@ -39,8 +39,8 @@
 
 	<!-- Ratings -->
 	Ratings:<br>
-	<select name:'ratings' style='width:710px; FONT-SIZE:20PT;'>
-		<option value = ''>choose ratings</option>
+	<select name='ratings' style='width:710px; FONT-SIZE:20PT;'>
+		<option value = 'NULL'>choose ratings</option>
 		<option value = '0'>0</option>
 		<option value = '1'>1</option>
 		<option value = '2'>2</option>
@@ -97,6 +97,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST")
 			$mid = $mysqli->query($sql_mid)->fetch_assoc()['id'];
 			$sql = 'insert into Review (name, time, mid, rating, comment) values (' . $name . ',' . $mysqltime . ',' . $mid . ',' . $ratings . ',' .$comments . ')';
 			$mysqli->query($sql);
+
+			echo $sql."<br>";
 			echo 'Successfully add comments!';
 			//echo $mysqltime;
 		}
