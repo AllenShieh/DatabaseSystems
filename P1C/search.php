@@ -124,7 +124,7 @@ Need to work on how to process the search
                   $sql_actor = $sql_actor." and ";
                   $sql_movie = $sql_movie." and ";
                 }
-                $sql_actor = $sql_actor."concat(first_name, last_name) like '%".$word."%'";
+                $sql_actor = $sql_actor."(first_name like '%".$word."%' or last_name like '%".$word."%')";
                 $sql_movie = $sql_movie."title like '%".$word."%'";
                 $comma = $comma+1;
               }
