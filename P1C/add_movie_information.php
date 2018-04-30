@@ -138,22 +138,20 @@
               $rating = $_POST['rating'];
               $g = array('Action', 'Adult', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Family', 'Fantasy', 'Horror', 'Musical', 'Mystery', 'Romance', 'SciFi', 'Short', 'Thriller', 'War', 'Western');
 
-              if($company == null)
-              {
-                echo 'Company can\'t be empty!';
-              }
-              elseif($title == null)
+              if($title == null)
               {
                 echo 'Title can\'t be empty!';
               }
+              elseif($company == null)
+              {
+                echo 'Company can\'t be empty!';
+              }
               else
               {
-                $max_id_query = 'select max(id) as id from Movie';
-                $max_id_result = $mysqli->query($max_id_query);
-                while($row = $max_id_result->fetch_assoc()) {
-                  $max_id = $row["id"];
-                  $cur_id = (String)((int)$max_id + 1);
-                }
+                $max_id_query = 'update MaxMovieID set id = id + 1';
+                $mysqli->query($max_id_query);
+                $cur_id_query = 'select id from MaxMovieID';
+                $cur_id = $mysqli->query($cur_id_query)->fetch_assoc()['id'];
                 $title = '"'. $_POST['title'] . '"';
                 $company = '"'.$_POST['company'] . '"';
 
@@ -173,7 +171,7 @@
                   $genre = '"' . $genre . '"';
                 }
                 $sql_movie = 'insert into Movie (id, title, year, rating, company) values (' . ' ' . $cur_id . ',' . $title . ','. $year . ',' . $rating . ',' . $company . ');';
-                echo $sql_movie."<br>";
+                //echo $sql_movie."<br>";
                 //$sql_genere = 'insert into MovieGenre (mid, genre) values (' . ' '. $cur_id . ',' $genre .')';
                 $mysqli->query($sql_movie);
                 for($i = 0; $i <19; $i++)
@@ -182,7 +180,7 @@
                   {
                     $sql_genere = 'insert into MovieGenre (mid, genre) values (' . ' ' . $cur_id . ',' . '"'.$_POST[$g[$i]] . '"'.')';
                     $mysqli->query($sql_genere);
-                    echo $sql_genere."<br>";
+                    //echo $sql_genere."<br>";
                   //echo '<br>';
                   }
                 }

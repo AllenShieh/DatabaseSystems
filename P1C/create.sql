@@ -37,7 +37,7 @@ create table Actor(
 create table Director(
 	id					INT,
 	last_name		varchar(20),
-	first_name	varchar(20),
+	first_name		varchar(20),
 	dob					date,
 	dod					date,
 
@@ -77,8 +77,8 @@ create table Review(
 	name 				varchar(20),
 	time				timestamp,
 	mid 				INT,
-	rating			INT,
-	comment			varchar(500),
+	rating				INT,
+	comment				varchar(500),
 
 	Foreign key(mid) references Movie(id), -- referential integrity constraints
 	check (rating>=0 and rating<=5) -- CHECK constraints

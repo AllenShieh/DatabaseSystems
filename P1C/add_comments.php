@@ -106,7 +106,7 @@
 							<!-- Ratings -->
 							Ratings:
 							<select class="form-control" name='ratings'>
-								<option value = 'NULL'>choose ratings</option>
+								<option value = ''>choose ratings</option>
 								<option value = '0'>0</option>
 								<option value = '1'>1</option>
 								<option value = '2'>2</option>
@@ -136,6 +136,7 @@
 							{
 								$comments = $_POST['comments'];
 								$name = $_POST['name'];
+								$ratings = $_POST['ratings'];
 								if(strlen($comments) > 500)
 								{
 									echo 'Please enter the comments within 500 characters!';
@@ -144,19 +145,32 @@
 								{
 									echo 'Please enter your name within 20 characters~';
 								}
+								elseif($ratings == null)
+								{
+									echo 'Please at least rate the movie~';
+								}
 								else
 								{
 									$movie = explode('(' , $_POST['title'])[0];
+									
 									if($comments != null)
 									{
 										$comments = '"' . $comments . '"';
+									}
+									else 
+									{
+										$comments = 'null';
 									}
 									if($name != null)
 									{
 										$name = '"'. $name . '"';
 									}
-
-									$ratings = $_POST['ratings'];
+									else
+									{
+										$name = 'null';
+									}
+								
+									
 									$time = time();
 									$mysqltime= '"' . date('Y-m-d H:i:s',$time) . '"';
 
@@ -165,7 +179,10 @@
 									$sql = 'insert into Review (name, time, mid, rating, comment) values (' . $name . ',' . $mysqltime . ',' . $mid . ',' . $ratings . ',' .$comments . ')';
 									$mysqli->query($sql);
 
+
 									//echo $sql."<br>";
+
+
 									echo 'Successfully add comments!';
 									//echo $mysqltime;
 								}

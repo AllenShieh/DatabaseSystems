@@ -67,10 +67,10 @@ Still need to implement the Director part
             <!-- Actor/Director checkbox -->
             <input type="radio" name="AorD"
           	  <?php if (isset($AorD) && $AorD=="Actor") echo "checked";?>
-          	value="Actor">Actor
+          	value="Actor" onclick="actor_sex()">Actor
           	<input type="radio" name="AorD"
           		<?php if (isset($AorD) && $AorD=="Director") echo "checked";?>
-          	value="Director">Director
+          	value="Director" onclick="direcctor_sex()">Director
           	<br><br>
 
             <!-- First name and last name -->
@@ -82,10 +82,10 @@ Still need to implement the Director part
             <br>
 
             <!-- Gender -->
-            <input type="radio" name="gender"
+            <input type="radio" id = "gender" name="gender"
           		<?php if (isset($gender) && $gender=="Female") echo "checked";?>
           	value="Female">Female
-          	<input type="radio" name="gender"
+          	<input type="radio" id = "gender"  name="gender"
           		<?php if (isset($gender) && $gender=="Male") echo "checked";?>
           	value="Male">Male
           	<br><br>
@@ -174,7 +174,7 @@ Still need to implement the Director part
           	{
           		echo 'Please choose a category to add!';
           	}
-          	elseif ($gender == null) {
+          	elseif ($AorD == 'Actor' and $gender == null) {
           		echo 'please choose a gender!';
           	}
           	elseif ($first_name == null) {
@@ -187,18 +187,27 @@ Still need to implement the Director part
           		echo 'Date of birth are not completed!';
           	}
           	else{
-          		$max_id_query = 'select max(id) as id from Actor';
-          		$max_id_result = $mysqli->query($max_id_query);
-          		while($row = $max_id_result->fetch_assoc()) {
-              	$max_id = $row["id"];
-              	$cur_id = (String)((int)$max_id + 1);
-            	}
+          		$max_id_query = 'update MaxPersonID set id = id + 1';
+          		$mysqli->query($max_id_query);
+          		$cur_id_query = 'select id from MaxPersonID';
+          		$cur_id = $mysqli->query($cur_id_query)->fetch_assoc()['id'];
+          		
             	$dob = '"'. $dob_yy . '-' . $dob_mm . '-' . $dob_dd . '"';
             	$last_name = '"'. $last_name . '"';
             	$first_name = '"'. $first_name. '"';
             	$gender = '"'. $gender . '"';
           		if ($dod_yy == null or $dod_mm == null or $dod_dd == null) {
-          			$sql = 'insert into Actor (id, last_name, first_name, sex, dob) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name . ',' . $gender . ',' . $dob . ')';
+          			if($AorD == 'Actor')
+          			{
+          				$sql = 'insert into Actor (id, last_name, first_name, sex, dob) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name . ',' . $gender . ',' . $dob . ')';
+          			}
+
+          			else
+          			{
+          				$sql = 'insert into Director (id, last_name, first_name, dob) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name . ','  . $dob . ')';
+          			}
+          		
+          			
           			#echo $sql;
           		}
           		else{
@@ -208,11 +217,21 @@ Still need to implement the Director part
           			if(strlen($dod_dd) == 1){
           				$dod_dd = '0' . $dod_dd;
           			}
+
           			$dod = '"'. $dod_yy . '-' . $dod_mm . '-' . $dod_dd.'"';
-          			$sql = 'insert into Actor (id, last_name, first_name, sex, dob, dod) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name . ',' . $gender . ',' . $dob . ',' .$dod . ')';
+
+          			if($AorD == 'Actor')
+          			{
+          				$sql = 'insert into Actor (id, last_name, first_name, sex, dob, dod) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name . ',' . $gender . ',' . $dob . ',' .$dod . ')';
+          			}
+          			else
+          			{
+          				$sql = 'insert into Director (id, last_name, first_name, dob, dod) values (' . ' ' . $cur_id . ',' . $last_name . ','. $first_name .  ',' . $dob . ',' .$dod . ')';
+          			}
+          			
 
           		}
-              echo $sql."<br>";
+              #echo $sql."<br>";
               $mysqli->query($sql);
               echo 'Successfully add the information!';
           	}
@@ -226,6 +245,18 @@ Still need to implement the Director part
   </main><!-- /.container -->
 
   <script language="JavaScript"><!--
+	function direcctor_sex(){
+        document.reg_testdate.gender[0].disabled=true;
+        document.reg_testdate.gender[1].disabled=true;
+      document.reg_testdate.gender.checked=false;
+  }
+
+	function actor_sex(){
+        document.reg_testdate.gender[0].disabled=false;
+        document.reg_testdate.gender[1].disabled=false;
+      document.reg_testdate.gender.checked=true;
+  }
+
   //dob
     function YYYYMMDDstart()
     {

@@ -220,6 +220,10 @@
                 $c = 1;
                 foreach($row as $x=>$x_value){
                   if($c==1){
+                    if($x_value == null)
+                    {
+                      $x_value = 'Anonymous';
+                    }
                     //echo $x_value;
                     echo "<font class='text-primary'>".$x_value."</font> ";
                   }
