@@ -73,6 +73,7 @@
 					<div class="col-8" align="left">
 
 						<h1>Add relation between Movies and Actors</h1>
+						<p> Due to the huge amount of Actors, the loading time of this page will be approximate 4s.</p> 
 						<form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]);?>">
 
 							<!-- Movie title -->

@@ -85,7 +85,17 @@
 
       <div class="starter-template">
         <h1>Welcome to Our Movie Data System!</h1>
-        <p class="lead">This is a project for CS143 at UCLA.</p>
+        <p class="lead">This is a project for CS143 at UCLA.
+        </br>
+        </br>
+        Implemented by:
+        </br>
+        Kaiyuan Xu(505033984)
+        </br>
+        Yao Xie(804946717).
+
+        </p>
+
       </div>
 
     </main><!-- /.container -->
