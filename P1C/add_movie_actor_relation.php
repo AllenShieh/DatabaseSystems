@@ -131,10 +131,12 @@
 								if($_POST['actor'] == null)
 								{
 									echo 'Error: You must choose a actor!';
+									echo '<br>';
 								}
 								if($_POST['role'] == null)
 								{
 									echo 'Error: You must specify the role of the actor!';
+									echo '<br>';
 								}
 							}
 							else
