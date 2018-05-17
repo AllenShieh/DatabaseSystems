@@ -104,27 +104,11 @@ _CONTRACTIONS = {
 }
 
 # You may need to write regular expressions.
-
-
-def sanitize(text):
-    """Do parse the text in variable "text" according to the spec, and return
-    a LIST containing FOUR strings
-    1. The parsed text.
-    2. The unigrams
-    3. The bigrams
-    4. The trigrams
-    """
-
-    # YOUR CODE GOES BELOW:
-    print(text)
-
+def text2parsed(text):
     parsed_text = ""
-    unigrams = ""
-    bigrams = ""
-    trigrams = ""
-
     prev = ' '
     i = 0
+
     while(i<len(text)):
         if(text[i].isalpha() or text[i].isdigit()): # letters
             parsed_text+=text[i].lower()
@@ -147,6 +131,52 @@ def sanitize(text):
                 prev = ' '
         i+=1
 
+    return parsed_text
+
+def parsed2uni(parsed_text):
+    unigrams = ""
+    i = 0
+    prev = ' '
+
+    while(i<len(parsed_text)):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
+            unigrams+=parsed_text[i]
+            prev = parsed_text[i]
+        else:
+            if(prev!=' '):
+                unigrams+=' '
+                prev = ' '
+        i+=1
+
+    return unigrams
+
+def parsed2bi(parsed_text):
+    bigrams = ""
+
+    return bigrams
+
+def parsed2tri(parsed_text):
+    trigrams = ""
+
+    return trigrams
+
+def sanitize(text):
+    """Do parse the text in variable "text" according to the spec, and return
+    a LIST containing FOUR strings
+    1. The parsed text.
+    2. The unigrams
+    3. The bigrams
+    4. The trigrams
+    """
+
+    # YOUR CODE GOES BELOW:
+    print(text)
+
+    parsed_text = text2parsed(text)
+    unigrams = parsed2uni(parsed_text)
+    bigrams = parsed2bi(parsed_text)
+    trigrams = parsed2tri(parsed_text)
+
     return [parsed_text, unigrams, bigrams, trigrams]
 
 
@@ -162,3 +192,6 @@ if __name__ == "__main__":
     test = "I'm* *afraid I can't explain myself, sir .Because I [am](https://www.google.com) not myself, you see?"
     result = sanitize(test)
     print(result[0])
+    print(result[1])
+    print(result[2])
+    print(result[3])
