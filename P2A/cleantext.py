@@ -104,10 +104,11 @@ _CONTRACTIONS = {
 }
 
 # You may need to write regular expressions.
+test = "I'm afraid I can't explain myself, sir. Because I am not myself, you see?"
 
 def sanitize(text):
     """Do parse the text in variable "text" according to the spec, and return
-    a LIST containing FOUR strings 
+    a LIST containing FOUR strings
     1. The parsed text.
     2. The unigrams
     3. The bigrams
@@ -115,6 +116,12 @@ def sanitize(text):
     """
 
     # YOUR CODE GOES BELOW:
+    print(text)
+
+    parsed_text = ""
+    unigrams = ""
+    bigrams = ""
+    trigrams = ""
 
     return [parsed_text, unigrams, bigrams, trigrams]
 
@@ -128,3 +135,4 @@ if __name__ == "__main__":
     # pass to "sanitize" and print the result as a list.
 
     # YOUR CODE GOES BELOW.
+    sanitize(test)
