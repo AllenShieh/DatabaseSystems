@@ -104,7 +104,7 @@ _CONTRACTIONS = {
 }
 
 # You may need to write regular expressions.
-test = "I'm afraid I can't explain myself, sir. Because I am not myself, you see?"
+
 
 def sanitize(text):
     """Do parse the text in variable "text" according to the spec, and return
@@ -123,6 +123,30 @@ def sanitize(text):
     bigrams = ""
     trigrams = ""
 
+    prev = ' '
+    i = 0
+    while(i<len(text)):
+        if(text[i].isalpha() or text[i].isdigit()): # letters
+            parsed_text+=text[i].lower()
+            prev = text[i]
+        elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation
+            if(prev!=' '):
+                parsed_text+=(' '+text[i]+' ')
+            else:
+                parsed_text+=(text[i]+' ')
+            prev = ' '
+        elif(text[i] in {'\'', '-'}): # interal punctuation
+            prev = text[i]
+            parsed_text+=text[i]
+        elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx)
+            while(i<len(text) and text[i]!=')'):
+                i+=1
+        else: # other including new line and tab
+            if(prev!=' '):
+                parsed_text+=' '
+                prev = ' '
+        i+=1
+
     return [parsed_text, unigrams, bigrams, trigrams]
 
 
@@ -135,4 +159,6 @@ if __name__ == "__main__":
     # pass to "sanitize" and print the result as a list.
 
     # YOUR CODE GOES BELOW.
-    sanitize(test)
+    test = "I'm* *afraid I can't explain myself, sir .Because I [am](https://www.google.com) not myself, you see?"
+    result = sanitize(test)
+    print(result[0])
