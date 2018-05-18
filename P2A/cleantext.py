@@ -7,7 +7,7 @@ from __future__ import print_function
 import re
 import string
 import argparse
-
+import json
 
 __author__ = ""
 __email__ = ""
@@ -210,7 +210,7 @@ def sanitize(text):
     """
 
     # YOUR CODE GOES BELOW:
-    print(text)
+    # print(text)
 
     parsed_text = text2parsed(text)
     unigrams = parsed2uni(parsed_text)
@@ -230,8 +230,27 @@ if __name__ == "__main__":
 
     # YOUR CODE GOES BELOW.
     test = "I'm* *afraid I can't explain myself, sir .Because I [am](https://www.google.com) not myself, you see?"
-    result = sanitize(test)
-    print(result[0])
-    print(result[1])
-    print(result[2])
-    print(result[3])
+    # result = sanitize(test)
+    # print(result[0])
+    # print(result[1])
+    # print(result[2])
+    # print(result[3])
+
+    limit = 10
+    out = open("out", "w")
+    with open("comments-minimal.json") as f:
+        for line in f:
+            limit-=1
+            data = json.loads(line)
+            result = sanitize(data['body'])
+            out.write("---\n\n")
+            out.write(result[0])
+            out.write('\n\n')
+            out.write(result[1])
+            out.write('\n\n')
+            out.write(result[2])
+            out.write('\n\n')
+            out.write(result[3])
+            out.write('\n\n')
+            if(limit==0):
+                break
