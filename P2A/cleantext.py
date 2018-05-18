@@ -122,7 +122,7 @@ def text2parsed(text):
         elif(text[i] in {'\'', '-'}): # interal punctuation
             prev = text[i]
             parsed_text+=text[i]
-        elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx)
+        elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx) or maybe use regular expression
             while(i<len(text) and text[i]!=')'):
                 i+=1
         else: # other including new line and tab
@@ -153,10 +153,50 @@ def parsed2uni(parsed_text):
 def parsed2bi(parsed_text):
     bigrams = ""
 
+    parsed_text+=' '
+    wordlist = []
+    i = 0
+    word = ""
+    while(i<len(parsed_text)):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
+            word+=parsed_text[i]
+        elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
+            if(len(wordlist)>1):
+                for j in range(len(wordlist)-1):
+                    if(bigrams!=""):
+                        bigrams+=' '
+                    bigrams+=(wordlist[j]+'_'+wordlist[j+1])
+            wordlist = []
+        else:
+            if(len(word)>0):
+                wordlist.append(word)
+                word = ""
+        i+=1
+
     return bigrams
 
 def parsed2tri(parsed_text):
     trigrams = ""
+
+    parsed_text+=' '
+    wordlist = []
+    i = 0
+    word = ""
+    while(i<len(parsed_text)):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
+            word+=parsed_text[i]
+        elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
+            if(len(wordlist)>2):
+                for j in range(len(wordlist)-2):
+                    if(trigrams!=""):
+                        trigrams+=' '
+                    trigrams+=(wordlist[j]+'_'+wordlist[j+1]+'_'+wordlist[j+2])
+            wordlist = []
+        else:
+            if(len(word)>0):
+                wordlist.append(word)
+                word = ""
+        i+=1
 
     return trigrams
 
