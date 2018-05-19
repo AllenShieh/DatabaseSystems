@@ -8,6 +8,7 @@ import re
 import string
 import argparse
 import json
+import re
 
 __author__ = ""
 __email__ = ""
@@ -108,9 +109,21 @@ def text2parsed(text):
     parsed_text = ""
     prev = ' '
     i = 0
+    print(text)
 
     while(i<len(text)):
-        if(text[i].isalpha() or text[i].isdigit()): # letters
+        if(text[i]=='h'): # http and https
+            candidate = ""
+            j = i
+            while(j<len(text) and text[j]!=' '):
+                candidate+=text[j]
+                j+=1
+            print(candidate)
+            matching = re.match('https?://.*',candidate)
+            if(matching):
+                # print(text[i+matching.span()[1]])
+                i+=matching.span()[1]-1 # start position of undealt character
+        elif(text[i].isalpha() or text[i].isdigit()): # letters
             parsed_text+=text[i].lower()
             prev = text[i]
         elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation
@@ -122,10 +135,31 @@ def text2parsed(text):
         elif(text[i] in {'\'', '-'}): # interal punctuation
             prev = text[i]
             parsed_text+=text[i]
-        elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx) or maybe use regular expression
-            while(i<len(text) and text[i]!=')'):
-                i+=1
-        else: # other including new line and tab
+        elif(text[i]=='['): # [xxx](url)
+            candidate = ""
+            j = i
+            while(j<len(text) and text[j]!=' '):
+                candidate+=text[j]
+                j+=1
+            matching = re.match('\[.*\]\(.*\)',candidate)
+            if(matching):
+                # print(text[i+matching.span()[0]])
+                # print(text[i+matching.span()[1]])
+                if(prev!=' '):
+                    parsed_text+=' '
+                j = i+1
+                while(text[j]!=']'):
+                    parsed_text+=text[j]
+                    j+=1
+                i+=matching.span()[1]-1 # start position of undealt character
+                prev = text[j-1]
+            if(prev!=' '):
+                parsed_text+=' '
+                prev = ' '
+        # elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx) or maybe use regular expression
+        #    while(i<len(text) and text[i]!=')'):
+        #        i+=1
+        else: # including \n \t space
             if(prev!=' '):
                 parsed_text+=' '
                 prev = ' '
@@ -229,13 +263,14 @@ if __name__ == "__main__":
     # pass to "sanitize" and print the result as a list.
 
     # YOUR CODE GOES BELOW.
-    test = "I'm* *afraid I can't explain myself, sir .Because I [am](https://www.google.com) not myself, you see?"
-    # result = sanitize(test)
-    # print(result[0])
+    test = "I'm* *afraid http://x I [can't explainhttps://x myself, sir .Because[x](a)s I [am](h)x [not](s) myself, [you see?"
+    result = sanitize(test)
+    print(result[0])
     # print(result[1])
     # print(result[2])
     # print(result[3])
 
+'''
     limit = 10
     out = open("out", "w")
     with open("comments-minimal.json") as f:
@@ -254,3 +289,4 @@ if __name__ == "__main__":
             out.write('\n\n')
             if(limit==0):
                 break
+'''
