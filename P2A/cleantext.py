@@ -109,36 +109,38 @@ def text2parsed(text):
     parsed_text = ""
     prev = ' '
     i = 0
-    print(text)
+    # print(text)
 
     while(i<len(text)):
-        if(text[i]=='h'): # http and https
+        if(text[i].lower()=='h'): # deal with http and https
             candidate = ""
             j = i
-            while(j<len(text) and text[j]!=' '):
+            while(j<len(text) and text[j]!=' '): # get the potential url
                 candidate+=text[j]
                 j+=1
-            print(candidate)
-            matching = re.match('https?://.*',candidate)
+            matching = re.match('[hH][tT][tT][pP][sS]?://.*',candidate) # regular expression for http and https
             if(matching):
                 # print(text[i+matching.span()[1]])
                 i+=matching.span()[1]-1 # start position of undealt character
-        elif(text[i].isalpha() or text[i].isdigit()): # letters
+            else: # just a normal letter 'h'
+                parsed_text+=text[i].lower()
+                prev = text[i]
+        elif(text[i].isalpha() or text[i].isdigit() or text[i] in {'\'', '-', '$', '%'}): # letters and internal punctuation
             parsed_text+=text[i].lower()
             prev = text[i]
-        elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation
-            if(prev!=' '):
+        elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation (maybe internal)
+            if(i!=0 and i!=len(text)-1 and (text[i-1].isalpha() or text[i-1].isdigit()) and (text[i+1].isalpha() or text[i+1].isdigit())):
+                parsed_text+=text[i]
+                prev = text[i]
+            elif(prev!=' '):
                 parsed_text+=(' '+text[i]+' ')
             else:
                 parsed_text+=(text[i]+' ')
             prev = ' '
-        elif(text[i] in {'\'', '-'}): # interal punctuation
-            prev = text[i]
-            parsed_text+=text[i]
         elif(text[i]=='['): # [xxx](url)
             candidate = ""
             j = i
-            while(j<len(text) and text[j]!=' '):
+            while(j<len(text) and text[j]!=' '): # get the potential url
                 candidate+=text[j]
                 j+=1
             matching = re.match('\[.*\]\(.*\)',candidate)
@@ -148,12 +150,12 @@ def text2parsed(text):
                 if(prev!=' '):
                     parsed_text+=' '
                 j = i+1
-                while(text[j]!=']'):
+                while(text[j]!=']'): # we still need letters inside []
                     parsed_text+=text[j]
                     j+=1
                 i+=matching.span()[1]-1 # start position of undealt character
                 prev = text[j-1]
-            if(prev!=' '):
+            if(prev!=' '): # if not url, treat it as a common punctuation
                 parsed_text+=' '
                 prev = ' '
         # elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx) or maybe use regular expression
@@ -169,18 +171,27 @@ def text2parsed(text):
 
 def parsed2uni(parsed_text):
     unigrams = ""
-    i = 0
-    prev = ' '
 
+    parsed_text+=' '
+    wordlist = []
+    i = 0
+    word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
-            unigrams+=parsed_text[i]
-            prev = parsed_text[i]
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
+            word+=parsed_text[i]
+        elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
+            if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
+                word+=parsed_text[i]
         else:
-            if(prev!=' '):
-                unigrams+=' '
-                prev = ' '
+            if(len(word)>0):
+                wordlist.append(word)
+                word = ""
         i+=1
+
+    for j in range(len(wordlist)):
+        if(unigrams!=""):
+            unigrams+=' '
+        unigrams+=wordlist[j]
 
     return unigrams
 
@@ -192,15 +203,19 @@ def parsed2bi(parsed_text):
     i = 0
     word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
             word+=parsed_text[i]
         elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
-            if(len(wordlist)>1):
+            if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
+                word+=parsed_text[i]
+            elif(len(wordlist)>1):
                 for j in range(len(wordlist)-1):
                     if(bigrams!=""):
                         bigrams+=' '
                     bigrams+=(wordlist[j]+'_'+wordlist[j+1])
-            wordlist = []
+                wordlist = []
+            else:
+                wordlist = []
         else:
             if(len(word)>0):
                 wordlist.append(word)
@@ -217,15 +232,19 @@ def parsed2tri(parsed_text):
     i = 0
     word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-'})):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
             word+=parsed_text[i]
         elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
-            if(len(wordlist)>2):
+            if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
+                word+=parsed_text[i]
+            elif(len(wordlist)>2):
                 for j in range(len(wordlist)-2):
                     if(trigrams!=""):
                         trigrams+=' '
                     trigrams+=(wordlist[j]+'_'+wordlist[j+1]+'_'+wordlist[j+2])
-            wordlist = []
+                wordlist = []
+            else:
+                wordlist = []
         else:
             if(len(word)>0):
                 wordlist.append(word)
@@ -265,28 +284,28 @@ if __name__ == "__main__":
     # YOUR CODE GOES BELOW.
     test = "I'm* *afraid http://x I [can't explainhttps://x myself, sir .Because[x](a)s I [am](h)x [not](s) myself, [you see?"
     result = sanitize(test)
-    print(result[0])
+    # print(result[0])
     # print(result[1])
     # print(result[2])
     # print(result[3])
 
-'''
-    limit = 10
-    out = open("out", "w")
-    with open("comments-minimal.json") as f:
+
+
+    # limit = 10
+    out = open("out.txt", "w")
+    with open("sample-comments.json") as f:
         for line in f:
-            limit-=1
+            # limit-=1
             data = json.loads(line)
             result = sanitize(data['body'])
-            out.write("---\n\n")
+            out.write("[\"")
             out.write(result[0])
-            out.write('\n\n')
+            out.write('\", \"')
             out.write(result[1])
-            out.write('\n\n')
+            out.write('\", \"')
             out.write(result[2])
-            out.write('\n\n')
+            out.write('\", \"')
             out.write(result[3])
-            out.write('\n\n')
-            if(limit==0):
-                break
-'''
+            out.write('\"]\n')
+            # if(limit==0):
+            #    break
