@@ -105,11 +105,22 @@ _CONTRACTIONS = {
 }
 
 # You may need to write regular expressions.
+'''
+Some clarification about the difference between our outputs and sample outputs:
+1. We do not think words on two sides of '/' should be considered as one whole part, they may have completely no relations.
+2. We do not think words between "" and '' should be considered as one whole part, especially when content between them is very long.
+3. We skip the special character like some smiley face (seems they make no sense in text analysis).
+4. Typos are treated as are input intentionally, that is, typos like 'text(s' will be parsed to 'text s'.
+5. We have not found a way to treat chinese punctuations, so they are filtered in most cases.
+6. There are sometimes one extra space in the end of some parsed texts (does not influence the following processing).
+'''
+
 def text2parsed(text):
     parsed_text = ""
     prev = ' '
     i = 0
     # print(text)
+    url_exist = False # used for whether [] denotes url, if yes, tell () to skip the content between
 
     while(i<len(text)):
         if(text[i].lower()=='h'): # deal with http and https
@@ -122,45 +133,56 @@ def text2parsed(text):
             if(matching):
                 # print(text[i+matching.span()[1]])
                 i+=matching.span()[1]-1 # start position of undealt character
-            else: # just a normal letter 'h'
+            else: # if it is just a normal letter 'h'
                 parsed_text+=text[i].lower()
                 prev = text[i]
-        elif(text[i].isalpha() or text[i].isdigit() or text[i] in {'\'', '-', '$', '%'}): # letters and internal punctuation
+        elif(text[i].isalpha() or text[i].isdigit()): # letters
             parsed_text+=text[i].lower()
             prev = text[i]
-        elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation (maybe internal)
-            if(i!=0 and i!=len(text)-1 and (text[i-1].isalpha() or text[i-1].isdigit()) and (text[i+1].isalpha() or text[i+1].isdigit())):
-                parsed_text+=text[i]
-                prev = text[i]
-            elif(prev!=' '):
-                parsed_text+=(' '+text[i]+' ')
+        elif(text[i] in {'\'', '-', '—', '$', '%'}): # tricky internal, sometimes they just appear alone, e.g. ' - '
+            if(i!=0 and i!=len(text)-1 and text[i-1]==' ' and text[i+1]==' '): # deal with lonely internal
+                prev = ' '
             else:
-                parsed_text+=(text[i]+' ')
-            prev = ' '
+                parsed_text+=text[i].lower()
+                prev = text[i]
         elif(text[i]=='['): # [xxx](url)
             candidate = ""
             j = i
-            while(j<len(text) and text[j]!=' '): # get the potential url
+            while(j<len(text) and text[j-1]!=')'): # get the potential url
                 candidate+=text[j]
                 j+=1
+            # print(candidate)
             matching = re.match('\[.*\]\(.*\)',candidate)
             if(matching):
                 # print(text[i+matching.span()[0]])
                 # print(text[i+matching.span()[1]])
-                if(prev!=' '):
-                    parsed_text+=' '
-                j = i+1
-                while(text[j]!=']'): # we still need letters inside []
-                    parsed_text+=text[j]
-                    j+=1
-                i+=matching.span()[1]-1 # start position of undealt character
-                prev = text[j-1]
+                url_exist = True # tell () to skip the content between
+                # if(prev!=' '):
+                #    parsed_text+=' '
+                # j = i+1
+                # while(text[j]!=']'): # we still need letters inside []
+                #    parsed_text+=text[j]
+                #    j+=1
+                # i+=matching.span()[1]-1 # start position of undealt character
+                # prev = text[j-1]
             if(prev!=' '): # if not url, treat it as a common punctuation
                 parsed_text+=' '
                 prev = ' '
-        # elif(text[i]=='(' and i>0 and text[i-1]==']'): # a url shoud be [xxx](https://xxx) or maybe use regular expression
-        #    while(i<len(text) and text[i]!=')'):
-        #        i+=1
+        elif(text[i]=='(' and url_exist): # told by []
+            url_exist = False
+            while(text[i]!=')'):
+                i+=1
+        elif(text[i] in {'.', '!', '?', ',', ';', ':'}): # external punctuation (maybe internal)
+            if(i!=0 and i!=len(text)-1 and (text[i-1].isalpha() or text[i-1].isdigit()) and (text[i+1].isalpha() or text[i+1].isdigit())):
+                parsed_text+=text[i] # if internal
+                prev = text[i]
+            elif(prev!=' '):
+                parsed_text+=(' '+text[i])
+                if(i!=len(text)-1): # try not to add extra space, but it doesn't matter
+                    parsed_text+=' '
+            else:
+                parsed_text+=(text[i]+' ')
+            prev = ' '
         else: # including \n \t space
             if(prev!=' '):
                 parsed_text+=' '
@@ -177,7 +199,7 @@ def parsed2uni(parsed_text):
     i = 0
     word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '—', '$', '%'})):
             word+=parsed_text[i]
         elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
             if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
@@ -203,7 +225,7 @@ def parsed2bi(parsed_text):
     i = 0
     word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '—', '$', '%'})):
             word+=parsed_text[i]
         elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
             if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
@@ -222,6 +244,12 @@ def parsed2bi(parsed_text):
                 word = ""
         i+=1
 
+    if(len(wordlist)>1):
+        for j in range(len(wordlist)-1):
+            if(bigrams!=""):
+                bigrams+=' '
+            bigrams+=(wordlist[j]+'_'+wordlist[j+1])
+
     return bigrams
 
 def parsed2tri(parsed_text):
@@ -232,7 +260,7 @@ def parsed2tri(parsed_text):
     i = 0
     word = ""
     while(i<len(parsed_text)):
-        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '$', '%'})):
+        if(parsed_text[i].isdigit() or parsed_text[i].isalpha() or (parsed_text[i] in {'\'', '-', '—', '$', '%'})):
             word+=parsed_text[i]
         elif(parsed_text[i] in {'.', '!', '?', ',', ';', ':'}):
             if((parsed_text[i-1].isalpha() or parsed_text[i-1].isdigit()) and (parsed_text[i+1].isalpha() or parsed_text[i+1].isdigit())):
@@ -250,6 +278,12 @@ def parsed2tri(parsed_text):
                 wordlist.append(word)
                 word = ""
         i+=1
+
+    if(len(wordlist)>2):
+        for j in range(len(wordlist)-2):
+            if(trigrams!=""):
+                trigrams+=' '
+            trigrams+=(wordlist[j]+'_'+wordlist[j+1]+'_'+wordlist[j+2])
 
     return trigrams
 
@@ -282,7 +316,9 @@ if __name__ == "__main__":
     # pass to "sanitize" and print the result as a list.
 
     # YOUR CODE GOES BELOW.
-    test = "I'm* *afraid http://x I [can't explainhttps://x myself, sir .Because[x](a)s I [am](h)x [not](s) myself, [you see?"
+
+    # test = "I'm* *afraid http://x I [can't explainhttps://x myself, sir .Because[x](a)s I [am](h)x [not](s) myself, [you see?"
+    test = "As a reminder, this subreddit [is for civil discussion.](/r/politics/wiki/index#wiki_be_civil)\n\nIn general,"
     result = sanitize(test)
     # print(result[0])
     # print(result[1])
