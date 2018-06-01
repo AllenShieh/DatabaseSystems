@@ -18,7 +18,21 @@ def makeNgrams(text):
     concat = ngrams[1]+' '+ngrams[2]+' '+ngrams[3]
     return concat.split(' ')
 
+def pLabel(raw):
+	if(raw==1):
+		return 1
+	else:
+		return 0
+
+def nLabel(raw):
+	if(raw==-1):
+		return 1
+	else:
+		return 0
+
 makeNgrams_udf = udf(makeNgrams, ArrayType(StringType()))
+pLabel_udf = udf(pLabel, IntegerType())
+nLabel_udf = udf(nLabel, IntegerType())
 
 def main(sqlContext):
     """Main function takes a Spark SQL context."""
@@ -38,12 +52,16 @@ def main(sqlContext):
         print("loading done")
     associated = join(comments, label)
     withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
-    # comments.show()
-    # associated.show()
-    # withngrams.show()
+    withplabels = withngrams.withColumn("plabel", pLabel_udf(withngrams['labeldjt']))
+    withpnlabels = withplabels.withColumn("nlabel", nLabel_udf(withplabels['labeldjt'])).select("id","ngrams","plabel","nlabel")
+    withpnlabels.show()
+    '''
     cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="vectors")
     model = cv.fit(withngrams)
     model.transform(withngrams).show()
+	'''
+
+
 
 if __name__ == "__main__":
     conf = SparkConf().setAppName("CS143 Project 2B")
