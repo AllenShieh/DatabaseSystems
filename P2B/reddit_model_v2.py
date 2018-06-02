@@ -11,6 +11,7 @@ from pyspark.ml.feature import CountVectorizer
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.mllib.linalg import DenseVector
 
 def join(comments, label):
 	# task 2
@@ -34,30 +35,52 @@ def nLabel(raw):
 	else:
 		return 0
 
+def getLinkid(text):
+    if(len(text)>3):
+        return text[3:]
+    else:
+        return text
+
+def posTh(p):
+    if(p[1]>0.2):
+        return 1
+    else:
+        return 0
+
+def negTh(p):
+    if(p[1]>0.25):
+        return 1
+    else:
+        return 0
+
 makeNgrams_udf = udf(makeNgrams, ArrayType(StringType()))
 pLabel_udf = udf(pLabel, IntegerType())
 nLabel_udf = udf(nLabel, IntegerType())
+getLinkid_udf = udf(getLinkid, StringType())
+posTh_udf = udf(posTh, IntegerType())
+negTh_udf = udf(negTh, IntegerType())
 
 def main(sqlContext):
     """Main function takes a Spark SQL context."""
     # YOUR CODE HERE
     # YOU MAY ADD OTHER FUNCTIONS AS NEEDED
 
-    if(save):
-        # load files
-        label = sqlContext.read.load("labeled_data.csv",format="csv", sep=",", inferSchema="true", header="true")
-        if(flag):
-            comments = sqlContext.read.json("comments-minimal.json.bz2")
-            submissions = sqlContext.read.json("submissions.json.bz2")
-            print("loading done")
-            comments.write.parquet("comments_data")
-            submissions.write.parquet("submissions_data")
-            print("writing done")
-        else:
-            comments = sqlContext.read.parquet("comments_data")
-            submissions = sqlContext.read.parquet("submissions_data")
-            print("loading done")
+    # load files
+    label = sqlContext.read.load("labeled_data.csv",format="csv", sep=",", inferSchema="true", header="true")
+    if(flag):
+        comments = sqlContext.read.json("comments-minimal.json.bz2")
+        submissions = sqlContext.read.json("submissions.json.bz2")
+        print("loading done")
+        comments.write.parquet("comments_data")
+        submissions.write.parquet("submissions_data")
+        print("writing done")
+    else:
+        comments = sqlContext.read.parquet("comments_data")
+        submissions = sqlContext.read.parquet("submissions_data")
+        print("loading done")
 
+    if(save):
+        # task 7 starts here
         # join tables
         associated = join(comments, label)
         # process
@@ -68,8 +91,8 @@ def main(sqlContext):
         # vectorizer
         cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
         model = cv.fit(withpnlabels)
-        model.transform(withpnlabels).show()
-
+        # model.transform(withpnlabels).show()
+        # specify models
         pos = model.transform(withpnlabels).select("id", col("poslabel").alias("label"), "features")
         neg = model.transform(withpnlabels).select("id", col("neglabel").alias("label"), "features")
         # pos.show()
@@ -102,6 +125,36 @@ def main(sqlContext):
         posModel = CrossValidatorModel.load("pos.model")
         negModel = CrossValidatorModel.load("neg.model")
         print("model loaded")
+        # task 8 starts here
+        # comments.show()
+        # submissions.show()
+        temp_comments = comments.select("id", "link_id", "author_flair_text", "created_utc", "body")
+        clean_comments = temp_comments.withColumn("true_id", getLinkid_udf(temp_comments['link_id']))
+        clean_submissions = submissions.select(col("id").alias("sub_id"), "title")
+        # clean_comments.show()
+        # clean_submissions.show()
+        com_sub = clean_comments.join(clean_submissions, clean_comments.true_id==clean_submissions.sub_id, "inner")
+
+        # task 9 starts here
+        filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
+        filtered_ngrams = filtered.withColumn("ngrams", makeNgrams_udf(filtered['body']))
+        # get vectorizer or use the orginal one?
+        associated = join(comments, label)
+        withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
+        cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
+        model = cv.fit(withngrams)
+        # model.transform(filtered_ngrams).show()
+        featuredata = model.transform(filtered_ngrams).select("id","author_flair_text","created_utc","sub_id","title","features")
+        posResult = posModel.transform(featuredata)
+        negResult = negModel.transform(featuredata)
+        # posResult.select("probability").show(20,False)
+        # negResult.show()
+        poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability'])).select("id", "author_flair_text", "created_utc", "title", "positive")
+        # poslabel.show()
+        neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability'])).select(col("id").alias("nid"), "negtive")
+        # how to combine these 2 tables???
+
+        # task 10 starts here
 
 
 
