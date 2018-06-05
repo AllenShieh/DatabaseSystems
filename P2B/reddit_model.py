@@ -7,12 +7,28 @@ from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
-from pyspark.sql.functions import udf, col
-from pyspark.sql.types import StringType, ArrayType
+from pyspark.sql.functions import udf, col, unix_timestamp
+from pyspark.sql.types import StringType, ArrayType, IntegerType, DateType
 from pyspark.ml.feature import CountVectorizer
+
+import time
 
 training = False
 read_raw = False
+joinFull = False
+
+states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', \
+          'California', 'Colorado', 'Connecticut', 'Delaware', \
+          'District of Columbia', 'Florida', 'Georgia', 'Hawaii', \
+          'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', \
+          'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', \
+          'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', \
+          'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', \
+          'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', \
+          'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', \
+          'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', \
+          'West Virginia', 'Wisconsin', 'Wyoming']
+
 
 # IMPORT OTHER MODULES HERE
 def associated(comments, label):
@@ -29,15 +45,31 @@ def sanitize(text):
 def process_id(test):
     return test[3:]
 
+def threshold_pos(vector):
+    if(vector[1] > 0.2):
+        return 1
+    else:
+        return 0
+
+def threshold_neg(vector):
+    if(vector[1] > 0.25):
+        return 1
+    else:
+        return 0
+
+
+
 # define UDF
 sanitize_udf = udf(sanitize, ArrayType(StringType()))
 process_id_udf = udf(process_id, StringType())
+threshold_pos_udf = udf(threshold_pos, IntegerType())
+threshold_neg_udf = udf(threshold_neg, IntegerType())
 
 def main(context):
     """Main function takes a Spark SQL context."""
     # YOUR CODE HERE
     # YOU MAY ADD OTHER FUNCTIONS AS NEEDED
-
+    start = time.time()
     if(read_raw):
         comments = sqlContext.read.json('comments-minimal.json.bz2')
         submissions = sqlContext.read.json('submissions.json.bz2')
@@ -114,14 +146,93 @@ def main(context):
         posModel = CrossValidatorModel.load('pos.model')
         negModel = CrossValidatorModel.load('neg.model')
         # task 8
-        comments_tmp = comments.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'))
+        comments_tmp = comments.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('score').alias('com_score'))
         comments_full = comments_tmp.withColumn('link_id', process_id_udf(comments_tmp['link_id']))
-        submissions_full = submissions.select(col('id').alias('sub_id'), col('title'))
+        submissions_full = submissions.select(col('id').alias('sub_id'), col('title'), col('score').alias('sub_score'))
 
-        com_sub = comments_full.join(submissions_full, comments_full.link_id == submissions_full.sub_id, 'inner')
-        com_sub = com_sub.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('title'))
+        if(joinFull):
+            com_sub = comments_full.join(submissions_full, comments_full.link_id == submissions_full.sub_id, 'inner')
+            com_sub = com_sub.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('com_score'), col('sub_score'))
+            com_sub.write.parquet('com_sub')
         #com_sub.show()
+        #exit()
+        com_sub = context.read.load('com_sub').sample(False, 0.02, None)
+       # com_sub = com_sub.sample(False, 0.02, None)
+        print('finish com_sub')
+        # task 9
+        filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
+        filtered_result = filtered.withColumn('ngrams', sanitize_udf(filtered['body']))
+
+
+        feaResult = model.transform(filtered_result).select(col('id'), col('link_id'), col('created_utc'), \
+                                    col('features'), col('author_flair_text'), col('com_score'), col('sub_score'))
+
+        posResult = posModel.transform(feaResult)
+        negResult = negModel.transform(feaResult)
+
+        pos = posResult.withColumn('pos', threshold_pos_udf(posResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'pos', 'com_score', 'sub_score')
+        neg = negResult.withColumn('neg', threshold_neg_udf(negResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'neg', 'com_score', 'sub_score')
+        #final_probs = pos.join(neg, pos.id == neg.id_neg, 'inner').select('id', 'created_utc', 'author_flair_text', 'title', 'pos', 'neg')
+        #final_probs.show()
+        #pos.write.parquet('pos')
+        #neg.write.parquet('neg')
+        print('finish task 9')
+
+        # task 10
+        num_rows = pos.count()
+        pos_filtered = pos.filter(pos.pos == 1)
+        neg_filtered = neg.filter(neg.neg == 1)
         
+        
+        # compute 1
+        num_pos = pos_filtered.count()
+        num_neg = neg_filtered.count()
+        print('finish counting rows')
+
+        print('Percentage of positive comments: {}'.format(num_pos / num_rows))
+        print('Percentage of negative comments: {}'.format(num_neg / num_rows))
+        print('finish compute 1')
+        
+        # compute 2
+        pos_time = pos.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
+        neg_time = neg.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
+
+        num_pos_time = pos_time.groupBy('time').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('time')
+        num_neg_time = neg_time.groupBy('time').agg(F.sum('neg') / F.count('pos').alias('Percentage of negative')).orderBy('time')
+
+        num_pos_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_pos_time')
+        num_neg_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_neg_time')
+        print('finish compute 2')
+        #print(num_pos_time)
+        
+        # compute 3
+        pos_state = pos.groupBy('author_flair_text').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive'))
+        neg_state = neg.groupBy('author_flair_text').agg(F.sum('neg') / F.count('pos').alias('Percentage of positive'))
+
+        pos_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_state')
+        neg_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_state')
+        print('finish compute 3')
+        #print(pos_state)
+        
+        #compute 4
+        pos_com_score = pos.groupBy('com_score').agg(F.sum('pos').alias('sum_pos_com'), F.count('pos').alias('total'), F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('Percentage of positive').limit(10)
+        pos_sub_score = pos.groupBy('sub_score').agg(F.sum('pos').alias('sum_pos_sub'), F.count('pos').alias('total'), F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('Percentage of positive').limit(10)
+        neg_com_score = neg.groupBy('com_score').agg(F.sum('neg').alias('sum_neg_com'), F.count('neg').alias('total'), F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('Percentage of negative').limit(10)
+        neg_sub_score = neg.groupBy('sub_score').agg(F.sum('neg').alias('sum_neg_sub'), F.count('neg').alias('total'), F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('Percentage of negative').limit(10)
+        
+        pos_com_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_com_score')
+        pos_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_sub_score')
+        neg_com_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_com_score')
+        neg_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_sub_score')
+        print('finish compute 4')
+        
+
+        end = time.time()
+        print('time consumed: {}'.format(end - start))
+
+
+
+
 
 
     
