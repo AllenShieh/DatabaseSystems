@@ -128,52 +128,59 @@ def main(sqlContext):
         # submissions.show()
         posModel = CrossValidatorModel.load("pos.model")
         negModel = CrossValidatorModel.load("neg.model")
-        # model = CountVectorizerModel.load("cv.model")
-        withngrams = comments.withColumn("ngrams", makeNgrams_udf(comments['body']))
-        cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
-        model = cv.fit(withngrams)
+        model = CountVectorizerModel.load("cv.model")
+        # withngrams = comments.withColumn("ngrams", makeNgrams_udf(comments['body']))
+        # cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
+        # model = cv.fit(withngrams)
         print("model loaded")
 
-        # task 8 starts here
-        temp_comments = comments.select("id", "link_id", "author_flair_text", "created_utc", "body")
-        clean_comments = temp_comments.withColumn("true_id", getLinkid_udf(temp_comments['link_id']))
-        # print(clean_comments.count())
-        clean_submissions = submissions.select(col("id").alias("sub_id"), "title")
-        # clean_comments.show()
-        # clean_submissions.show()
-        com_sub = clean_comments.join(clean_submissions, clean_comments.true_id==clean_submissions.sub_id, "inner")
+        if(predict==0):
+            # task 8 starts here
+            temp_comments = comments.select("id", "link_id", "author_flair_text", "created_utc", "body")
+            clean_comments = temp_comments.withColumn("true_id", getLinkid_udf(temp_comments['link_id']))
+            # print(clean_comments.count())
+            clean_submissions = submissions.select(col("id").alias("sub_id"), "title")
+            # clean_comments.show()
+            # clean_submissions.show()
+            com_sub = clean_comments.join(clean_submissions, clean_comments.true_id==clean_submissions.sub_id, "inner")
+            com_sub.write.parquet("com_sub")
+        else:
+            # task 9 starts here
+            com_sub = sqlContext.read.parquet("com_sub")
+            com_sub = com_sub.sample(False, 0.0001, None)
+            filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
+            # print(filtered.count())
+            filtered_ngrams = filtered.withColumn("ngrams", makeNgrams_udf(filtered['body']))
+            # filtered_ngrams = filtered_ngrams.sample(False, 0.01, None)
+            print("prepared")
+            featuredata = model.transform(filtered_ngrams).select("id","author_flair_text","created_utc","sub_id","title","features")
+            posResult = posModel.transform(featuredata)
+            negResult = negModel.transform(featuredata)
+            # posResult.show()
+            # negResult.show()
+            poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability']))# .select("id", "author_flair_text", "created_utc", "title", "positive")
+            neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability']))# .select(col("id").alias("nid"), "author_flair_text", "created_utc", "title", "negtive")
+            print("predict done")
+            # poslabel.show()
+            # neglabel.show()
+            # how to combine these 2 tables???
 
-        # task 9 starts here
-        filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
-        # print(filtered.count())
-        filtered_ngrams = filtered.withColumn("ngrams", makeNgrams_udf(filtered['body']))
-        filtered_ngrams = filtered_ngrams.sample(False, 0.01, None)
-        print("prepared")
-        featuredata = model.transform(filtered_ngrams).select("id","author_flair_text","created_utc","sub_id","title","features")
-        posResult = posModel.transform(featuredata)
-        negResult = negModel.transform(featuredata)
-        # posResult.show()
-        # negResult.show()
-        poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability']))# .select("id", "author_flair_text", "created_utc", "title", "positive")
-        neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability']))# .select(col("id").alias("nid"), "author_flair_text", "created_utc", "title", "negtive")
-        print("predict done")
-        # poslabel.show()
-        # neglabel.show()
-        # how to combine these 2 tables???
+            # task 10 starts here
+            # c_all = poslabel.count()
+            all_day = poslabel.withColumn("date",from_unixtime('created_utc').cast(DateType())).groupby("date").count()
+            pos_posts = poslabel.filter("positive = 1")
+            # c_pos_posts = pos_posts.count()
+            # p_pos_posts = c_pos_posts/c_all
+            # print(p_pos_posts)
+            # neg_posts = neglabel.filter("negtive = 1")
+            # c_neg_posts = neg_posts.count()
+            # p_neg_posts = c_neg_posts/c_all
+            # print(p_neg_posts)
+            pos_day = pos_posts.withColumn("pos_date",from_unixtime('created_utc').cast(DateType())).groupby("pos_date").count().withColumnRenamed("count","pos_count")
+            p_pos_day = all_day.join(pos_day, all_day.date==pos_day.pos_date, "left").withColumn("pos_per", pos_count/count).show()
 
-        # task 10 starts here
-        c_all = poslabel.count()
-        print(c_all)
-        pos_posts = poslabel.filter("positive = 1")
-        # print("filtered")
-        c_pos_posts = pos_posts.count()
-        # c_pos_posts = poslabel.groupBy().sum("positive").collect()
-        # print(c_pos_posts)
-        # p_pos_posts = c_pos_posts/c_all
-        # print(p_pos_posts)
-        # p_neg_posts = neglabel.filter("negtive = 1").count()/c_all
-        # print(p_neg_posts)
-        print("end")
+
+            print("end")
 
 if __name__ == "__main__":
     conf = SparkConf().setAppName("CS143 Project 2B")
