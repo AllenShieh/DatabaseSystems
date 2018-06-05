@@ -5,6 +5,7 @@ from pyspark.sql import SQLContext
 # IMPORT OTHER MODULES HERE
 flag = 0
 save = 0
+predict = 1
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.ml.feature import CountVectorizer, CountVectorizerModel
@@ -60,6 +61,9 @@ getLinkid_udf = udf(getLinkid, StringType())
 posTh_udf = udf(posTh, IntegerType())
 negTh_udf = udf(negTh, IntegerType())
 
+states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'District of Columbia', 'Florida', 'Georgia', 'Hawaii', 'Idaho', 'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota', 'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'New Hampshire', 'New Jersey', 'New Mexico', 'New York', 'North Carolina', 'North Dakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'Rhode Island', 'South Carolina', 'South Dakota', 'Tennessee', 'Texas', 'Utah', 'Vermont', 'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming']
+
+
 def main(sqlContext):
     """Main function takes a Spark SQL context."""
     # YOUR CODE HERE
@@ -81,19 +85,15 @@ def main(sqlContext):
 
     if(save):
         # task 7 starts here
-        # join tables
         associated = join(comments, label)
-        # process
         withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
         withplabels = withngrams.withColumn("poslabel", pLabel_udf(withngrams['labeldjt']))
         withpnlabels = withplabels.withColumn("neglabel", nLabel_udf(withplabels['labeldjt'])).select("id","ngrams","poslabel","neglabel")
         # withpnlabels.show()
-        # vectorizer
         cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
         model = cv.fit(withpnlabels)
         model.save("cv.model")
         # model.transform(withpnlabels).show()
-        # specify models
         pos = model.transform(withpnlabels).select("id", col("poslabel").alias("label"), "features")
         neg = model.transform(withpnlabels).select("id", col("neglabel").alias("label"), "features")
         # pos.show()
@@ -108,12 +108,12 @@ def main(sqlContext):
             estimator=poslr,
             evaluator=posEvaluator,
             estimatorParamMaps=posParamGrid,
-            numFolds=5)
+            numFolds=2) # for test
         negCrossval = CrossValidator(
             estimator=neglr,
             evaluator=negEvaluator,
             estimatorParamMaps=negParamGrid,
-            numFolds=5)
+            numFolds=2) # for test
         posTrain, posTest = pos.randomSplit([0.5, 0.5])
         negTrain, negTest = neg.randomSplit([0.5, 0.5])
         print("Training positive classifier...")
@@ -122,16 +122,22 @@ def main(sqlContext):
         negModel = negCrossval.fit(negTrain)
         posModel.save("pos.model")
         negModel.save("neg.model")
+        print("trained")
     else:
-        posModel = CrossValidatorModel.load("pos.model")
-        negModel = CrossValidatorModel.load("neg.model")
-        model = CountVectorizerModel.load("cv.model")
-        print("model loaded")
-        # task 8 starts here
         # comments.show()
         # submissions.show()
+        posModel = CrossValidatorModel.load("pos.model")
+        negModel = CrossValidatorModel.load("neg.model")
+        # model = CountVectorizerModel.load("cv.model")
+        withngrams = comments.withColumn("ngrams", makeNgrams_udf(comments['body']))
+        cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
+        model = cv.fit(withngrams)
+        print("model loaded")
+
+        # task 8 starts here
         temp_comments = comments.select("id", "link_id", "author_flair_text", "created_utc", "body")
         clean_comments = temp_comments.withColumn("true_id", getLinkid_udf(temp_comments['link_id']))
+        # print(clean_comments.count())
         clean_submissions = submissions.select(col("id").alias("sub_id"), "title")
         # clean_comments.show()
         # clean_submissions.show()
@@ -139,26 +145,35 @@ def main(sqlContext):
 
         # task 9 starts here
         filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
+        # print(filtered.count())
         filtered_ngrams = filtered.withColumn("ngrams", makeNgrams_udf(filtered['body']))
-        # get vectorizer or use the orginal one?
-        # associated = join(comments, label)
-        # withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
-        # cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
-        # model = cv.fit(withngrams)
-        # model.transform(filtered_ngrams).show()
+        filtered_ngrams = filtered_ngrams.sample(False, 0.01, None)
+        print("prepared")
         featuredata = model.transform(filtered_ngrams).select("id","author_flair_text","created_utc","sub_id","title","features")
         posResult = posModel.transform(featuredata)
         negResult = negModel.transform(featuredata)
-        # posResult.select("probability").show(20,False)
+        # posResult.show()
         # negResult.show()
-        poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability'])).select("id", "author_flair_text", "created_utc", "title", "positive")
-        poslabel.show()
-        neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability'])).select(col("id").alias("nid"), "negtive")
+        poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability']))# .select("id", "author_flair_text", "created_utc", "title", "positive")
+        neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability']))# .select(col("id").alias("nid"), "author_flair_text", "created_utc", "title", "negtive")
+        print("predict done")
+        # poslabel.show()
+        # neglabel.show()
         # how to combine these 2 tables???
 
         # task 10 starts here
-
-
+        c_all = poslabel.count()
+        print(c_all)
+        pos_posts = poslabel.filter("positive = 1")
+        # print("filtered")
+        c_pos_posts = pos_posts.count()
+        # c_pos_posts = poslabel.groupBy().sum("positive").collect()
+        # print(c_pos_posts)
+        # p_pos_posts = c_pos_posts/c_all
+        # print(p_pos_posts)
+        # p_neg_posts = neglabel.filter("negtive = 1").count()/c_all
+        # print(p_neg_posts)
+        print("end")
 
 if __name__ == "__main__":
     conf = SparkConf().setAppName("CS143 Project 2B")
