@@ -7,7 +7,7 @@ flag = 0
 save = 0
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
-from pyspark.ml.feature import CountVectorizer
+from pyspark.ml.feature import CountVectorizer, CountVectorizerModel
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
 from pyspark.ml.evaluation import BinaryClassificationEvaluator
@@ -91,6 +91,7 @@ def main(sqlContext):
         # vectorizer
         cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
         model = cv.fit(withpnlabels)
+        model.save("cv.model")
         # model.transform(withpnlabels).show()
         # specify models
         pos = model.transform(withpnlabels).select("id", col("poslabel").alias("label"), "features")
@@ -124,6 +125,7 @@ def main(sqlContext):
     else:
         posModel = CrossValidatorModel.load("pos.model")
         negModel = CrossValidatorModel.load("neg.model")
+        model = CountVectorizerModel.load("cv.model")
         print("model loaded")
         # task 8 starts here
         # comments.show()
@@ -139,10 +141,10 @@ def main(sqlContext):
         filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
         filtered_ngrams = filtered.withColumn("ngrams", makeNgrams_udf(filtered['body']))
         # get vectorizer or use the orginal one?
-        associated = join(comments, label)
-        withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
-        cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
-        model = cv.fit(withngrams)
+        # associated = join(comments, label)
+        # withngrams = associated.withColumn("ngrams", makeNgrams_udf(associated['body']))
+        # cv = CountVectorizer(binary=True, inputCol="ngrams", outputCol="features")
+        # model = cv.fit(withngrams)
         # model.transform(filtered_ngrams).show()
         featuredata = model.transform(filtered_ngrams).select("id","author_flair_text","created_utc","sub_id","title","features")
         posResult = posModel.transform(featuredata)
@@ -150,7 +152,7 @@ def main(sqlContext):
         # posResult.select("probability").show(20,False)
         # negResult.show()
         poslabel = posResult.withColumn("positive",posTh_udf(posResult['probability'])).select("id", "author_flair_text", "created_utc", "title", "positive")
-        # poslabel.show()
+        poslabel.show()
         neglabel = negResult.withColumn("negtive",negTh_udf(negResult['probability'])).select(col("id").alias("nid"), "negtive")
         # how to combine these 2 tables???
 
