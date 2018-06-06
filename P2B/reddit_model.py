@@ -3,7 +3,6 @@ from pyspark import SparkConf, SparkContext
 from pyspark.sql import SQLContext
 from pyspark.sql import functions as F
 
-
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
 from pyspark.ml.evaluation import BinaryClassificationEvaluator as metric
@@ -12,6 +11,7 @@ from pyspark.sql.functions import udf, col, unix_timestamp
 from pyspark.sql.types import StringType, ArrayType, IntegerType, DateType
 from pyspark.ml.feature import CountVectorizer, CountVectorizerModel
 
+from sklearn.metrics import roc_curve, auc
 
 import time
 
@@ -59,7 +59,28 @@ def threshold_neg(vector):
     else:
         return 0
 
-
+def plot_ROC(result, title):
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+     
+    y_test = [i[1] for i in results_list]
+    y_score = [i[0] for i in results_list]
+     
+    fpr, tpr, _ = roc_curve(y_test, y_score)
+    roc_auc = auc(fpr, tpr)
+     
+    %matplotlib inline
+    plt.figure()
+    plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC of ' + title)
+    plt.legend(loc="lower right")
+    plt.show()
 
 # define UDF
 sanitize_udf = udf(sanitize, ArrayType(StringType()))
@@ -157,7 +178,16 @@ def main(context):
         pos_metrics = metric(scoreAndLabels)
         print("The ROC score of positive results is: ", pos_metrics.areaUnderROC)
 
-        
+        neg_results = neg_trans.select(['probability', 'label'])
+        neg_trans_collect = neg_results.collect()
+        neg_trans_results_list = [(float(i[0][0]), 1.0-float(i[1])) for i in neg_trans_collect]
+        neg_scoreAndLabels = sc.parallelize(neg_trans_results_list)
+ 
+        neg_metrics = metric(scoreAndLabels)
+        print("The ROC score of negative results is: ", neg_metrics.areaUnderROC)
+
+        plot_ROC(pos_trans_results_list, 'positive results')
+        plot_ROC(neg_trans_results_list, 'negative results')
 
         # Once we train the models, we don't want to do it again. We can save the models and load them again later.
         posModel.save("pos.model")
