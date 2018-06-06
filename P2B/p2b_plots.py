@@ -69,8 +69,10 @@ neg_data = dict(zip(state_data.state, state_data.Negative))
 
 # choose a color for each state based on sentiment.
 pos_colors = {}
+neg_colors = {}
 statenames = []
 pos_cmap = plt.cm.Greens # use 'hot' colormap
+neg_cmap = plt.cm.Blues
 
 vmin = 0; vmax = 1 # set range.
 for shapedict in m.states_info:
@@ -78,7 +80,10 @@ for shapedict in m.states_info:
     # skip DC and Puerto Rico.
     if statename not in ['District of Columbia', 'Puerto Rico']:
         pos = pos_data[statename]
+        neg = neg_data[statename]
         pos_colors[statename] = pos_cmap(1. - np.sqrt(( pos - vmin )/( vmax - vmin)))[:3]
+    statenames.append(statename)
+        neg_colors[statename] = neg_cmap(1. - np.sqrt(( neg - vmin )/( vmax - vmin)))[:3]
     statenames.append(statename)
 # cycle through state names, color each one.
 
@@ -91,6 +96,16 @@ for nshape, seg in enumerate(m.states):
         poly = Polygon(seg, facecolor=color, edgecolor=color)
         ax.add_patch(poly)
 plt.title('Positive Trump Sentiment Across the US')
+plt.show()
+
+ax = plt.gca() # get current axes instance
+for nshape, seg in enumerate(m.states):
+    # skip Puerto Rico and DC
+    if statenames[nshape] not in ['District of Columbia', 'Puerto Rico']:
+        color = rgb2hex(neg_colors[statenames[nshape]])
+        poly = Polygon(seg, facecolor=color, edgecolor=color)
+        ax.add_patch(poly)
+plt.title('Negtive Trump Sentiment Across the US')
 plt.show()
 
 
