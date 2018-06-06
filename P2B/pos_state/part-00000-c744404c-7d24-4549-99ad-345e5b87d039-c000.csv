@@ -1,0 +1,51 @@
+author_flair_text,(sum(pos) / count(pos) AS `Percentage of positive`),value
+Utah,0.09090909090909091,Utah
+Hawaii,0.11764705882352941,Hawaii
+Minnesota,0.0975609756097561,Minnesota
+Ohio,0.1335149863760218,Ohio
+Arkansas,0.09615384615384616,Arkansas
+Oregon,0.10199004975124377,Oregon
+Texas,0.11700913242009132,Texas
+North Dakota,0.24242424242424243,North Dakota
+Pennsylvania,0.11137440758293839,Pennsylvania
+Connecticut,0.11842105263157894,Connecticut
+Nebraska,0.14545454545454545,Nebraska
+Vermont,0.12359550561797752,Vermont
+Nevada,0.047619047619047616,Nevada
+Washington,0.11353315168029064,Washington
+Illinois,0.08344733242134063,Illinois
+Oklahoma,0.09009009009009009,Oklahoma
+Delaware,0.125,Delaware
+Alaska,0.13793103448275862,Alaska
+New Mexico,0.12244897959183673,New Mexico
+West Virginia,0.1320754716981132,West Virginia
+Missouri,0.07792207792207792,Missouri
+Rhode Island,0.08571428571428572,Rhode Island
+Georgia,0.12702078521939955,Georgia
+Montana,0.11904761904761904,Montana
+Michigan,0.1,Michigan
+Virginia,0.12045889101338432,Virginia
+North Carolina,0.09917355371900827,North Carolina
+Wyoming,0.0967741935483871,Wyoming
+Kansas,0.1348314606741573,Kansas
+New Jersey,0.11401098901098901,New Jersey
+Maryland,0.0891812865497076,Maryland
+Alabama,0.08947368421052632,Alabama
+Arizona,0.12806539509536785,Arizona
+Iowa,0.12658227848101267,Iowa
+Massachusetts,0.11010558069381599,Massachusetts
+Kentucky,0.11204481792717087,Kentucky
+Louisiana,0.13636363636363635,Louisiana
+Mississippi,0.046511627906976744,Mississippi
+New Hampshire,0.078125,New Hampshire
+Tennessee,0.12883435582822086,Tennessee
+Florida,0.13242574257425743,Florida
+Indiana,0.11983471074380166,Indiana
+Idaho,0.14583333333333334,Idaho
+South Carolina,0.11049723756906077,South Carolina
+South Dakota,0.07142857142857142,South Dakota
+California,0.11571056062581486,California
+New York,0.11994516792323509,New York
+Wisconsin,0.12806539509536785,Wisconsin
+Colorado,0.11533586818757921,Colorado
+Maine,0.1743119266055046,Maine
