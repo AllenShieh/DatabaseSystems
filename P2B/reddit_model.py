@@ -3,13 +3,15 @@ from pyspark import SparkConf, SparkContext
 from pyspark.sql import SQLContext
 from pyspark.sql import functions as F
 
+
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
-from pyspark.ml.evaluation import BinaryClassificationEvaluator
+from pyspark.ml.evaluation import BinaryClassificationEvaluator as metric
 
 from pyspark.sql.functions import udf, col, unix_timestamp
 from pyspark.sql.types import StringType, ArrayType, IntegerType, DateType
-from pyspark.ml.feature import CountVectorizer
+from pyspark.ml.feature import CountVectorizer, CountVectorizerModel
+
 
 import time
 
@@ -69,6 +71,9 @@ def main(context):
     """Main function takes a Spark SQL context."""
     # YOUR CODE HERE
     # YOU MAY ADD OTHER FUNCTIONS AS NEEDED
+
+    state = sqlContext.createDataFrame(states, StringType())
+
     start = time.time()
     if(read_raw):
         comments = sqlContext.read.json('comments-minimal.json.bz2')
@@ -83,26 +88,27 @@ def main(context):
         submissions = context.read.load('submissions')
         label = context.read.load('label')
 
-    associate = associated(comments, label).select(col('id'), col('body'), col('labeldjt'))
-
-    # task 4   
-    newColumn = associate.withColumn('ngrams', sanitize_udf(associate['body']))
-
-    # task 6A
-    cv = CountVectorizer(inputCol = 'ngrams', outputCol = "features", binary = True)
-
-    model = cv.fit(newColumn)
-    tmp = model.transform(newColumn)
-
-    # task 6B
-    result = tmp.withColumn('poslabel', F.when(col('labeldjt') == 1, 1).otherwise(0)) #result with new column of positive and negative
-    result = result.withColumn('neglabel', F.when(col('labeldjt') == -1, 1).otherwise(0))
-    pos = result.select(col('poslabel').alias('label'), col('features'))
-    neg = result.select(col('neglabel').alias('label'), col('features'))
-
     #result.show()
 
     if(training):
+        associate = associated(comments, label).select(col('id'), col('body'), col('labeldjt'))
+
+        # task 4   
+        newColumn = associate.withColumn('ngrams', sanitize_udf(associate['body']))
+
+        # task 6A
+        cv = CountVectorizer(inputCol = 'ngrams', outputCol = "features", binary = True)
+
+        model = cv.fit(newColumn)
+        tmp = model.transform(newColumn)
+        model.save("cv.model")
+
+        # task 6B
+        result = tmp.withColumn('poslabel', F.when(col('labeldjt') == 1, 1).otherwise(0)) #result with new column of positive and negative
+        result = result.withColumn('neglabel', F.when(col('labeldjt') == -1, 1).otherwise(0))
+        pos = result.select(col('poslabel').alias('label'), col('features'))
+        neg = result.select(col('neglabel').alias('label'), col('features'))
+
         # task 7
         # Initialize two logistic regression models.
         # Replace labelCol with the column containing the label, and featuresCol with the column containing the features.
@@ -139,10 +145,25 @@ def main(context):
         print("Training negative classifier...")
         negModel = negCrossval.fit(negTrain)
 
+        # ROC
+        pos_trans = posModel.fit(posTest)
+        neg_trans = negModel.fit(negTest)
+
+        pos_results = pos_trans.select(['probability', 'label'])
+        pos_trans_collect = pos_results.collect()
+        pos_trans_results_list = [(float(i[0][0]), 1.0-float(i[1])) for i in pos_trans_collect]
+        pos_scoreAndLabels = sc.parallelize(pos_trans_results_list)
+ 
+        pos_metrics = metric(scoreAndLabels)
+        print("The ROC score of positive results is: ", pos_metrics.areaUnderROC)
+
+        
+
         # Once we train the models, we don't want to do it again. We can save the models and load them again later.
         posModel.save("pos.model")
         negModel.save("neg.model")
     else:
+        cv = CountVectorizerModel.load('cv.model')
         posModel = CrossValidatorModel.load('pos.model')
         negModel = CrossValidatorModel.load('neg.model')
         # task 8
@@ -152,7 +173,7 @@ def main(context):
 
         if(joinFull):
             com_sub = comments_full.join(submissions_full, comments_full.link_id == submissions_full.sub_id, 'inner')
-            com_sub = com_sub.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('com_score'), col('sub_score'))
+            com_sub = com_sub.select(col('id'), col('title'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('com_score'), col('sub_score'))
             com_sub.write.parquet('com_sub')
         #com_sub.show()
         #exit()
@@ -165,13 +186,13 @@ def main(context):
 
 
         feaResult = model.transform(filtered_result).select(col('id'), col('link_id'), col('created_utc'), \
-                                    col('features'), col('author_flair_text'), col('com_score'), col('sub_score'))
+                                    col('features'), col('author_flair_text'), col('com_score'), col('sub_score'), col('title'))
 
         posResult = posModel.transform(feaResult)
         negResult = negModel.transform(feaResult)
 
-        pos = posResult.withColumn('pos', threshold_pos_udf(posResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'pos', 'com_score', 'sub_score')
-        neg = negResult.withColumn('neg', threshold_neg_udf(negResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'neg', 'com_score', 'sub_score')
+        pos = posResult.withColumn('pos', threshold_pos_udf(posResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'pos', 'com_score', 'sub_score', 'title')
+        neg = negResult.withColumn('neg', threshold_neg_udf(negResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'neg', 'com_score', 'sub_score', 'title')
         #final_probs = pos.join(neg, pos.id == neg.id_neg, 'inner').select('id', 'created_utc', 'author_flair_text', 'title', 'pos', 'neg')
         #final_probs.show()
         #pos.write.parquet('pos')
@@ -179,12 +200,11 @@ def main(context):
         print('finish task 9')
 
         # task 10
+        
+        # compute 1
         num_rows = pos.count()
         pos_filtered = pos.filter(pos.pos == 1)
         neg_filtered = neg.filter(neg.neg == 1)
-        
-        
-        # compute 1
         num_pos = pos_filtered.count()
         num_neg = neg_filtered.count()
         print('finish counting rows')
@@ -194,11 +214,12 @@ def main(context):
         print('finish compute 1')
         
         # compute 2
+        
         pos_time = pos.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
         neg_time = neg.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
 
         num_pos_time = pos_time.groupBy('time').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('time')
-        num_neg_time = neg_time.groupBy('time').agg(F.sum('neg') / F.count('pos').alias('Percentage of negative')).orderBy('time')
+        num_neg_time = neg_time.groupBy('time').agg(F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('time')
 
         num_pos_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_pos_time')
         num_neg_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_neg_time')
@@ -206,19 +227,31 @@ def main(context):
         #print(num_pos_time)
         
         # compute 3
+
         pos_state = pos.groupBy('author_flair_text').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive'))
-        neg_state = neg.groupBy('author_flair_text').agg(F.sum('neg') / F.count('pos').alias('Percentage of positive'))
+        neg_state = neg.groupBy('author_flair_text').agg(F.sum('neg') / F.count('neg').alias('Percentage of positive'))
+
+        pos_state = pos_state.join(state, pos_state.author_flair_text == state.value, 'inner')
+        pos_state = pos_state.na.drop(subset=['value'])
+        pos_state = pos_state.select(col('author_flair_text').alias('state'), col('Percentage of positive').alias('Positive'))
+
+        neg_state = neg_state.join(state, neg_state.author_flair_text == state.value, 'inner')
+        neg_state = neg_state.na.drop(subset=['value'])
+        neg_state = neg_state.select(col('author_flair_text').alias('state'), col('Percentage of negative').alias('Negative'))
 
         pos_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_state')
         neg_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_state')
         print('finish compute 3')
         #print(pos_state)
         
-        #compute 4
-        pos_com_score = pos.groupBy('com_score').agg(F.sum('pos').alias('sum_pos_com'), F.count('pos').alias('total'), F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('Percentage of positive').limit(10)
-        pos_sub_score = pos.groupBy('sub_score').agg(F.sum('pos').alias('sum_pos_sub'), F.count('pos').alias('total'), F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('Percentage of positive').limit(10)
-        neg_com_score = neg.groupBy('com_score').agg(F.sum('neg').alias('sum_neg_com'), F.count('neg').alias('total'), F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('Percentage of negative').limit(10)
-        neg_sub_score = neg.groupBy('sub_score').agg(F.sum('neg').alias('sum_neg_sub'), F.count('neg').alias('total'), F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('Percentage of negative').limit(10)
+        
+        # compute 4
+        pos_com_score = pos.groupBy('com_score').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('com_score')
+        pos_sub_score = pos.groupBy('sub_score').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('sub_score')
+        neg_com_score = neg.groupBy('com_score').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy('com_score')
+        neg_sub_score = neg.groupBy('sub_score').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy('sub_score')
+
+
         
         pos_com_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_com_score')
         pos_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_sub_score')
@@ -226,6 +259,14 @@ def main(context):
         neg_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_sub_score')
         print('finish compute 4')
         
+
+        # compute 5
+
+        pos_story = pos.groupBy('title').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy(F.desc('Percentage of positive')).limit(10)
+        neg_story = neg.groupBy('title').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy(F.desc('Percentage of negative')).limit(10)
+
+        pos_story.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_story')
+        neg_story.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_story')
 
         end = time.time()
         print('time consumed: {}'.format(end - start))
