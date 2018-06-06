@@ -5,19 +5,23 @@ from pyspark.sql import functions as F
 
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.tuning import CrossValidator, ParamGridBuilder, CrossValidatorModel
-from pyspark.ml.evaluation import BinaryClassificationEvaluator as metric
+from pyspark.ml.evaluation import BinaryClassificationEvaluator
 
 from pyspark.sql.functions import udf, col, unix_timestamp
 from pyspark.sql.types import StringType, ArrayType, IntegerType, DateType
 from pyspark.ml.feature import CountVectorizer, CountVectorizerModel
 
 from sklearn.metrics import roc_curve, auc
+from pyspark.mllib.evaluation import BinaryClassificationMetrics as metric
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 import time
 
-training = False
-read_raw = False
-joinFull = False
+training = 0
+read_raw = 0
+joinFull = 0
 
 states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', \
           'California', 'Colorado', 'Connecticut', 'Delaware', \
@@ -59,18 +63,18 @@ def threshold_neg(vector):
     else:
         return 0
 
-def plot_ROC(result, title):
+def plot_ROC(results_list, title):
     fpr = dict()
     tpr = dict()
     roc_auc = dict()
-     
+
     y_test = [i[1] for i in results_list]
     y_score = [i[0] for i in results_list]
-     
+
     fpr, tpr, _ = roc_curve(y_test, y_score)
     roc_auc = auc(fpr, tpr)
-     
-    %matplotlib inline
+
+    # %matplotlib inline
     plt.figure()
     plt.plot(fpr, tpr, label='ROC curve (area = %0.2f)' % roc_auc)
     plt.plot([0, 1], [0, 1], 'k--')
@@ -81,6 +85,8 @@ def plot_ROC(result, title):
     plt.title('ROC of ' + title)
     plt.legend(loc="lower right")
     plt.show()
+    plt.savefig(title+'.png')
+
 
 # define UDF
 sanitize_udf = udf(sanitize, ArrayType(StringType()))
@@ -93,14 +99,14 @@ def main(context):
     # YOUR CODE HERE
     # YOU MAY ADD OTHER FUNCTIONS AS NEEDED
 
-    state = sqlContext.createDataFrame(states, StringType())
+
 
     start = time.time()
     if(read_raw):
         comments = sqlContext.read.json('comments-minimal.json.bz2')
         submissions = sqlContext.read.json('submissions.json.bz2')
         label = sqlContext.read.load('labeled_data.csv', format = 'csv', sep = ',',header="true")
-
+        print("load done")
         comments.write.parquet('comments')
         submissions.write.parquet('submissions')
         label.write.parquet('label')
@@ -108,21 +114,20 @@ def main(context):
         comments = context.read.load('comments')
         submissions = context.read.load('submissions')
         label = context.read.load('label')
-
+    print("read data")
     #result.show()
 
     if(training):
         associate = associated(comments, label).select(col('id'), col('body'), col('labeldjt'))
 
-        # task 4   
+        # task 4
         newColumn = associate.withColumn('ngrams', sanitize_udf(associate['body']))
 
         # task 6A
         cv = CountVectorizer(inputCol = 'ngrams', outputCol = "features", binary = True)
-
         model = cv.fit(newColumn)
         tmp = model.transform(newColumn)
-        model.save("cv.model")
+        print("cv model")
 
         # task 6B
         result = tmp.withColumn('poslabel', F.when(col('labeldjt') == 1, 1).otherwise(0)) #result with new column of positive and negative
@@ -160,42 +165,51 @@ def main(context):
         # Split the data 50/50
         posTrain, posTest = pos.randomSplit([0.5, 0.5])
         negTrain, negTest = neg.randomSplit([0.5, 0.5])
+
         # Train the models
         print("Training positive classifier...")
         posModel = posCrossval.fit(posTrain)
         print("Training negative classifier...")
         negModel = negCrossval.fit(negTrain)
+        # Once we train the models, we don't want to do it again. We can save the models and load them again later.
+        posModel.save("pos.model")
+        negModel.save("neg.model")
+        model.save("cv.model")
 
+        # posModel = CrossValidatorModel.load('pos.model')
+        # negModel = CrossValidatorModel.load('neg.model')
+
+        print("ROC")
         # ROC
-        pos_trans = posModel.fit(posTest)
-        neg_trans = negModel.fit(negTest)
+        pos_trans = posModel.transform(posTest)
+        neg_trans = negModel.transform(negTest)
+
 
         pos_results = pos_trans.select(['probability', 'label'])
         pos_trans_collect = pos_results.collect()
         pos_trans_results_list = [(float(i[0][0]), 1.0-float(i[1])) for i in pos_trans_collect]
         pos_scoreAndLabels = sc.parallelize(pos_trans_results_list)
- 
-        pos_metrics = metric(scoreAndLabels)
+
+        pos_metrics = metric(pos_scoreAndLabels)
         print("The ROC score of positive results is: ", pos_metrics.areaUnderROC)
 
         neg_results = neg_trans.select(['probability', 'label'])
         neg_trans_collect = neg_results.collect()
         neg_trans_results_list = [(float(i[0][0]), 1.0-float(i[1])) for i in neg_trans_collect]
         neg_scoreAndLabels = sc.parallelize(neg_trans_results_list)
- 
-        neg_metrics = metric(scoreAndLabels)
+
+        neg_metrics = metric(neg_scoreAndLabels)
         print("The ROC score of negative results is: ", neg_metrics.areaUnderROC)
 
-        plot_ROC(pos_trans_results_list, 'positive results')
-        plot_ROC(neg_trans_results_list, 'negative results')
+        plot_ROC(pos_trans_results_list, 'positive_results')
+        plot_ROC(neg_trans_results_list, 'negative_results')
 
-        # Once we train the models, we don't want to do it again. We can save the models and load them again later.
-        posModel.save("pos.model")
-        negModel.save("neg.model")
+
     else:
-        cv = CountVectorizerModel.load('cv.model')
+        model = CountVectorizerModel.load('cv.model')
         posModel = CrossValidatorModel.load('pos.model')
         negModel = CrossValidatorModel.load('neg.model')
+        print("model loaded")
         # task 8
         comments_tmp = comments.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('score').alias('com_score'))
         comments_full = comments_tmp.withColumn('link_id', process_id_udf(comments_tmp['link_id']))
@@ -205,21 +219,20 @@ def main(context):
             com_sub = comments_full.join(submissions_full, comments_full.link_id == submissions_full.sub_id, 'inner')
             com_sub = com_sub.select(col('id'), col('title'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('com_score'), col('sub_score'))
             com_sub.write.parquet('com_sub')
-        #com_sub.show()
-        #exit()
-        com_sub = context.read.load('com_sub').sample(False, 0.02, None)
-       # com_sub = com_sub.sample(False, 0.02, None)
+        else:
+            com_sub = context.read.load('com_sub')# .sample(False, 0.01, None)
+        # com_sub = com_sub.sample(False, 0.02, None)
         print('finish com_sub')
         # task 9
         filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
         filtered_result = filtered.withColumn('ngrams', sanitize_udf(filtered['body']))
-
 
         feaResult = model.transform(filtered_result).select(col('id'), col('link_id'), col('created_utc'), \
                                     col('features'), col('author_flair_text'), col('com_score'), col('sub_score'), col('title'))
 
         posResult = posModel.transform(feaResult)
         negResult = negModel.transform(feaResult)
+        print("transformed")
 
         pos = posResult.withColumn('pos', threshold_pos_udf(posResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'pos', 'com_score', 'sub_score', 'title')
         neg = negResult.withColumn('neg', threshold_neg_udf(negResult['probability'])).select('id', 'created_utc', 'author_flair_text', 'neg', 'com_score', 'sub_score', 'title')
@@ -230,7 +243,7 @@ def main(context):
         print('finish task 9')
 
         # task 10
-        
+
         # compute 1
         num_rows = pos.count()
         pos_filtered = pos.filter(pos.pos == 1)
@@ -242,24 +255,23 @@ def main(context):
         print('Percentage of positive comments: {}'.format(num_pos / num_rows))
         print('Percentage of negative comments: {}'.format(num_neg / num_rows))
         print('finish compute 1')
-        
+
         # compute 2
-        
         pos_time = pos.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
         neg_time = neg.withColumn('time', F.from_unixtime(col('created_utc')).cast(DateType()))
 
-        num_pos_time = pos_time.groupBy('time').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive')).orderBy('time')
-        num_neg_time = neg_time.groupBy('time').agg(F.sum('neg') / F.count('neg').alias('Percentage of negative')).orderBy('time')
+        num_pos_time = pos_time.groupBy('time').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('time')
+        num_neg_time = neg_time.groupBy('time').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy('time')
 
         num_pos_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_pos_time')
         num_neg_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_neg_time')
         print('finish compute 2')
         #print(num_pos_time)
-        
-        # compute 3
 
-        pos_state = pos.groupBy('author_flair_text').agg(F.sum('pos') / F.count('pos').alias('Percentage of positive'))
-        neg_state = neg.groupBy('author_flair_text').agg(F.sum('neg') / F.count('neg').alias('Percentage of positive'))
+        # compute 3
+        state = sqlContext.createDataFrame(states, StringType())
+        pos_state = pos.groupBy('author_flair_text').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive'))
+        neg_state = neg.groupBy('author_flair_text').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative'))
 
         pos_state = pos_state.join(state, pos_state.author_flair_text == state.value, 'inner')
         pos_state = pos_state.na.drop(subset=['value'])
@@ -273,25 +285,20 @@ def main(context):
         neg_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_state')
         print('finish compute 3')
         #print(pos_state)
-        
-        
+
         # compute 4
         pos_com_score = pos.groupBy('com_score').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('com_score')
         pos_sub_score = pos.groupBy('sub_score').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('sub_score')
         neg_com_score = neg.groupBy('com_score').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy('com_score')
         neg_sub_score = neg.groupBy('sub_score').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy('sub_score')
 
-
-        
         pos_com_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_com_score')
         pos_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_sub_score')
         neg_com_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_com_score')
         neg_sub_score.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_sub_score')
         print('finish compute 4')
-        
 
         # compute 5
-
         pos_story = pos.groupBy('title').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy(F.desc('Percentage of positive')).limit(10)
         neg_story = neg.groupBy('title').agg((F.sum('neg') / F.count('neg')).alias('Percentage of negative')).orderBy(F.desc('Percentage of negative')).limit(10)
 
@@ -306,10 +313,6 @@ def main(context):
 
 
 
-    
-
-
-
 if __name__ == "__main__":
     conf = SparkConf().setAppName("CS143 Project 2B")
     conf = conf.setMaster("local[*]")
@@ -317,4 +320,3 @@ if __name__ == "__main__":
     sqlContext = SQLContext(sc)
     sc.addPyFile("cleantext.py")
     main(sqlContext)
-
