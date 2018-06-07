@@ -16,7 +16,6 @@ from pyspark.mllib.evaluation import BinaryClassificationMetrics as metric
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
 import time
 
 training = 0
@@ -38,7 +37,6 @@ states = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', \
 
 # IMPORT OTHER MODULES HERE
 def associated(comments, label):
-	# task 2
 	return comments.join(label, comments.id == label.Input_id, 'inner')
 
 def sanitize(text):
@@ -99,9 +97,8 @@ def main(context):
     # YOUR CODE HERE
     # YOU MAY ADD OTHER FUNCTIONS AS NEEDED
 
-
-
     start = time.time()
+    # task 1
     if(read_raw):
         comments = sqlContext.read.json('comments-minimal.json.bz2')
         submissions = sqlContext.read.json('submissions.json.bz2')
@@ -114,26 +111,30 @@ def main(context):
         comments = context.read.load('comments')
         submissions = context.read.load('submissions')
         label = context.read.load('label')
-    print("read data")
+    print("task 1 complete: read data")
     #result.show()
 
     if(training):
+        # task 2
         associate = associated(comments, label).select(col('id'), col('body'), col('labeldjt'))
+        print("task 2 complete: associate data")
 
-        # task 4
+        # task 4, 5
         newColumn = associate.withColumn('ngrams', sanitize_udf(associate['body']))
+        print("task 4, 5 complete: generate unigrams")
 
         # task 6A
         cv = CountVectorizer(inputCol = 'ngrams', outputCol = "features", binary = True)
         model = cv.fit(newColumn)
         tmp = model.transform(newColumn)
-        print("cv model")
+        print("task 6A complete: cv model")
 
         # task 6B
-        result = tmp.withColumn('poslabel', F.when(col('labeldjt') == 1, 1).otherwise(0)) #result with new column of positive and negative
+        result = tmp.withColumn('poslabel', F.when(col('labeldjt') == 1, 1).otherwise(0))
         result = result.withColumn('neglabel', F.when(col('labeldjt') == -1, 1).otherwise(0))
         pos = result.select(col('poslabel').alias('label'), col('features'))
         neg = result.select(col('neglabel').alias('label'), col('features'))
+        print("task 6B complete: relabel data")
 
         # task 7
         # Initialize two logistic regression models.
@@ -175,15 +176,14 @@ def main(context):
         posModel.save("pos.model")
         negModel.save("neg.model")
         model.save("cv.model")
+        print("task 7 complete: training")
 
         # posModel = CrossValidatorModel.load('pos.model')
         # negModel = CrossValidatorModel.load('neg.model')
 
-        print("ROC")
-        # ROC
+        # point 7
         pos_trans = posModel.transform(posTest)
         neg_trans = negModel.transform(negTest)
-
 
         pos_results = pos_trans.select(['probability', 'label'])
         pos_trans_collect = pos_results.collect()
@@ -203,13 +203,14 @@ def main(context):
 
         plot_ROC(pos_trans_results_list, 'positive_results')
         plot_ROC(neg_trans_results_list, 'negative_results')
-
+        print("point 7 complete: ROC")
 
     else:
         model = CountVectorizerModel.load('cv.model')
         posModel = CrossValidatorModel.load('pos.model')
         negModel = CrossValidatorModel.load('neg.model')
         print("model loaded")
+
         # task 8
         comments_tmp = comments.select(col('id'), col('link_id'), col('created_utc'), col('body'), col('author_flair_text'), col('score').alias('com_score'))
         comments_full = comments_tmp.withColumn('link_id', process_id_udf(comments_tmp['link_id']))
@@ -221,15 +222,13 @@ def main(context):
             com_sub.write.parquet('com_sub')
         else:
             com_sub = context.read.load('com_sub')# .sample(False, 0.01, None)
-        # com_sub = com_sub.sample(False, 0.02, None)
-        print('finish com_sub')
+        print('task 8 complete: comment with submission')
+
         # task 9
         filtered = com_sub.filter("body NOT LIKE '%/s%' and body NOT LIKE '&gt;%'")
         filtered_result = filtered.withColumn('ngrams', sanitize_udf(filtered['body']))
-
         feaResult = model.transform(filtered_result).select(col('id'), col('link_id'), col('created_utc'), \
                                     col('features'), col('author_flair_text'), col('com_score'), col('sub_score'), col('title'))
-
         posResult = posModel.transform(feaResult)
         negResult = negModel.transform(feaResult)
         print("transformed")
@@ -240,17 +239,15 @@ def main(context):
         #final_probs.show()
         #pos.write.parquet('pos')
         #neg.write.parquet('neg')
-        print('finish task 9')
+        print('task 9 complete: predict')
 
         # task 10
-
         # compute 1
         num_rows = pos.count()
         pos_filtered = pos.filter(pos.pos == 1)
         neg_filtered = neg.filter(neg.neg == 1)
         num_pos = pos_filtered.count()
         num_neg = neg_filtered.count()
-        print('finish counting rows')
 
         print('Percentage of positive comments: {}'.format(num_pos / num_rows))
         print('Percentage of negative comments: {}'.format(num_neg / num_rows))
@@ -266,7 +263,6 @@ def main(context):
         num_pos_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_pos_time')
         num_neg_time.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('num_neg_time')
         print('finish compute 2')
-        #print(num_pos_time)
 
         # compute 3
         state = sqlContext.createDataFrame(states, StringType())
@@ -284,7 +280,6 @@ def main(context):
         pos_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_state')
         neg_state.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_state')
         print('finish compute 3')
-        #print(pos_state)
 
         # compute 4
         pos_com_score = pos.groupBy('com_score').agg((F.sum('pos') / F.count('pos')).alias('Percentage of positive')).orderBy('com_score')
@@ -304,13 +299,10 @@ def main(context):
 
         pos_story.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('pos_story')
         neg_story.coalesce(1).write.mode("overwrite").format("com.databricks.spark.csv").option("header", "true").csv('neg_story')
+        print('finish compute 5')
 
         end = time.time()
         print('time consumed: {}'.format(end - start))
-
-
-
-
 
 
 if __name__ == "__main__":

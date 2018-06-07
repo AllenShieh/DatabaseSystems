@@ -32,7 +32,7 @@ ts = pd.read_csv("time_data.csv")
 # Remove erroneous row.
 ts = ts[ts['date'] != '2018-12-31']
 
-plt.figure(figsize=(12,5))
+# plt.figure(figsize=(12,5))
 ts.date = pd.to_datetime(ts['date'], format='%Y-%m-%d')
 ts.set_index(['date'],inplace=True)
 
@@ -40,6 +40,8 @@ ax = ts.plot(title="President Trump Sentiment on /r/politics Over Time",
         color=['green', 'red'],
        ylim=(0, 1.05))
 ax.plot()
+# plt.show()
+plt.savefig("1.png")
 
 """
 PLOT 2: SENTIMENT BY STATE (POSITIVE AND NEGATIVE SEPARATELY)
@@ -63,27 +65,22 @@ https://github.com/matplotlib/basemap/blob/master/examples/st99_d00.shx
 # Lambert Conformal map of lower 48 states.
 m = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
         projection='lcc', lat_1=33, lat_2=45, lon_0=-95)
-shp_info = m.readshapefile('/path_to/st99_d00','states',drawbounds=True)  # No extension specified in path here.
+shp_info = m.readshapefile('./st99_d00','states',drawbounds=True)  # No extension specified in path here.
 pos_data = dict(zip(state_data.state, state_data.Positive))
 neg_data = dict(zip(state_data.state, state_data.Negative))
 
 # choose a color for each state based on sentiment.
 pos_colors = {}
-neg_colors = {}
 statenames = []
 pos_cmap = plt.cm.Greens # use 'hot' colormap
-neg_cmap = plt.cm.Blues
 
-vmin = 0; vmax = 1 # set range.
+vmin = 0.01; vmax = 0.03 # set range.
 for shapedict in m.states_info:
     statename = shapedict['NAME']
     # skip DC and Puerto Rico.
     if statename not in ['District of Columbia', 'Puerto Rico']:
         pos = pos_data[statename]
-        neg = neg_data[statename]
         pos_colors[statename] = pos_cmap(1. - np.sqrt(( pos - vmin )/( vmax - vmin)))[:3]
-    statenames.append(statename)
-        neg_colors[statename] = neg_cmap(1. - np.sqrt(( neg - vmin )/( vmax - vmin)))[:3]
     statenames.append(statename)
 # cycle through state names, color each one.
 
@@ -96,7 +93,25 @@ for nshape, seg in enumerate(m.states):
         poly = Polygon(seg, facecolor=color, edgecolor=color)
         ax.add_patch(poly)
 plt.title('Positive Trump Sentiment Across the US')
-plt.show()
+# plt.show()
+plt.savefig("2.png")
+
+# NEGATIVE MAP
+m = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
+        projection='lcc', lat_1=33, lat_2=45, lon_0=-95)
+shp_info = m.readshapefile('./st99_d00','states',drawbounds=True)  # No extension specified in path here.
+neg_colors = {}
+statenames = []
+neg_cmap = plt.cm.Blues
+
+vmin = 0.95; vmax = 1 # set range.
+for shapedict in m.states_info:
+    statename = shapedict['NAME']
+    # skip DC and Puerto Rico.
+    if statename not in ['District of Columbia', 'Puerto Rico']:
+        neg = neg_data[statename]
+        neg_colors[statename] = neg_cmap(1. - np.sqrt(( neg - vmin )/( vmax - vmin)))[:3]
+    statenames.append(statename)
 
 ax = plt.gca() # get current axes instance
 for nshape, seg in enumerate(m.states):
@@ -106,8 +121,36 @@ for nshape, seg in enumerate(m.states):
         poly = Polygon(seg, facecolor=color, edgecolor=color)
         ax.add_patch(poly)
 plt.title('Negtive Trump Sentiment Across the US')
-plt.show()
+# plt.show()
+plt.savefig("3.png")
 
+# DIFF MAP
+m = Basemap(llcrnrlon=-119, llcrnrlat=22, urcrnrlon=-64, urcrnrlat=49,
+        projection='lcc', lat_1=33, lat_2=45, lon_0=-95)
+shp_info = m.readshapefile('./st99_d00','states',drawbounds=True)  # No extension specified in path here.
+diff_colors = {}
+statenames = []
+diff_cmap = plt.cm.Oranges
+
+vmin = 0.92; vmax = 0.99 # set range.
+for shapedict in m.states_info:
+    statename = shapedict['NAME']
+    # skip DC and Puerto Rico.
+    if statename not in ['District of Columbia', 'Puerto Rico']:
+        diff = neg_data[statename]-pos_data[statename]
+        diff_colors[statename] = diff_cmap(1. - np.sqrt(( diff - vmin )/( vmax - vmin)))[:3]
+    statenames.append(statename)
+
+ax = plt.gca() # get current axes instance
+for nshape, seg in enumerate(m.states):
+    # skip Puerto Rico and DC
+    if statenames[nshape] not in ['District of Columbia', 'Puerto Rico']:
+        color = rgb2hex(diff_colors[statenames[nshape]])
+        poly = Polygon(seg, facecolor=color, edgecolor=color)
+        ax.add_patch(poly)
+plt.title('Negtive-Positive Trump Sentiment Across the US')
+# plt.show()
+plt.savefig("4.png")
 
 # SOURCE: https://stackoverflow.com/questions/39742305/how-to-use-basemap-python-to-plot-us-with-50-states
 # (this misses Alaska and Hawaii. If you can get them to work, EXTRA CREDIT)
@@ -127,7 +170,7 @@ PLOT 5A: SENTIMENT BY STORY SCORE
 # submission_score, Positive, Negative
 
 story = pd.read_csv("submission_score.csv")
-plt.figure(figsize=(12,5))
+# plt.figure(figsize=(12,5))
 fig = plt.figure()
 ax1 = fig.add_subplot(111)
 
@@ -137,7 +180,8 @@ plt.legend(loc='lower right');
 
 plt.xlabel('President Trump Sentiment by Submission Score')
 plt.ylabel("Percent Sentiment")
-plt.show()
+# plt.show()
+plt.savefig("5.png")
 
 """
 PLOT 5B: SENTIMENT BY COMMENT SCORE
@@ -150,7 +194,7 @@ PLOT 5B: SENTIMENT BY COMMENT SCORE
 # comment_score, Positive, Negative
 
 story = pd.read_csv("comment_score.csv")
-plt.figure(figsize=(12,5))
+# plt.figure(figsize=(12,5))
 fig = plt.figure()
 ax1 = fig.add_subplot(111)
 
@@ -160,4 +204,5 @@ plt.legend(loc='lower right');
 
 plt.xlabel('President Trump Sentiment by Comment Score')
 plt.ylabel("Percent Sentiment")
-plt.show()
+# plt.show()
+plt.savefig("6.png")
