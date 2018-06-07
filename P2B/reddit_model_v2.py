@@ -79,10 +79,11 @@ def main(sqlContext):
         submissions.write.parquet("submissions_data")
         print("writing done")
     else:
-        comments = sqlContext.read.parquet("comments_data")
-        submissions = sqlContext.read.parquet("submissions_data")
+        comments = sqlContext.read.parquet("comments")
+        submissions = sqlContext.read.parquet("submissions")
         print("loading done")
-
+    comments.show()
+    exit()
     if(save):
         # task 7 starts here
         associated = join(comments, label)
